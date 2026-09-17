@@ -1,0 +1,455 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data backed galaxy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{
+  --bg-0:#05060c; --bg-1:#0b0e1a; --panel:#11131f; --panel-2:#171a2a; --line:#262a40;
+  --ink:#f2f3f8; --ink-2:#a9adc4; --muted:#6b7089;
+  --c0:#3987e5; --c1:#d95926; --c2:#199e70; --c3:#c98500; --c4:#d55181; --c5:#008300;
+  --c6:#9085e9; --c7:#e66767;
+  --other:#5a6079;
+  --gold:#f2b940; --danger:#e66767;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg-0);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--c0);outline-offset:2px}
+
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 900px 600px at 15% 10%, rgba(57,135,229,.16), transparent 60%),
+    radial-gradient(ellipse 800px 700px at 85% 25%, rgba(217,89,38,.10), transparent 60%),
+    radial-gradient(ellipse 900px 800px at 50% 100%, rgba(25,158,112,.10), transparent 60%),
+    var(--bg-0);
+}
+#starcanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 20px 12px;
+  background:linear-gradient(to bottom, rgba(5,6,12,.92), rgba(5,6,12,0));}
+h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
+h1 span{color:var(--ink-2);font-weight:500}
+.search{position:relative;flex:1;min-width:180px;max-width:340px}
+.search input{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.search input::placeholder{color:var(--muted)}
+.toggle{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px}
+.toggle button{border:0;background:none;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--ink-2)}
+.toggle button[aria-pressed="true"]{background:var(--panel-2);color:var(--ink)}
+.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 13px;font-size:13px;cursor:pointer;color:var(--ink-2)}
+.iconbtn:hover{color:var(--ink);border-color:var(--c0)}
+.legend{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--ink-2);flex-wrap:wrap}
+.legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.sub{width:100%;font-size:12px;color:var(--muted)}
+
+svg#galaxy{position:fixed;inset:0;z-index:1;width:100%;height:100%;cursor:grab}
+svg#galaxy:active{cursor:grabbing}
+.node text{fill:var(--ink);font-size:11px;pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.65);stroke-width:3px}
+.node circle{stroke:rgba(255,255,255,.18);stroke-width:1px;cursor:pointer}
+.node.dim{opacity:.12}
+.link{stroke:#8892b8;stroke-opacity:.15}
+.link.hot{stroke:#e8ecff;stroke-opacity:.55}
+
+#panel,#archivePanel,#settingsPanel{position:fixed;top:0;right:0;bottom:0;z-index:6;width:380px;max-width:92vw;background:var(--panel);
+  border-left:1px solid var(--line);padding:calc(18px + env(safe-area-inset-top,0px)) 18px 18px;overflow:auto;
+  transform:translateX(100%);transition:transform .22s ease;box-shadow:-24px 0 48px rgba(0,0,0,.35)}
+#panel[data-open="true"],#archivePanel[data-open="true"],#settingsPanel[data-open="true"]{transform:translateX(0)}
+#panel .close,#archivePanel .close,#settingsPanel .close{position:absolute;top:14px;right:14px;background:none;border:0;color:var(--ink-2);font-size:20px;cursor:pointer;line-height:1}
+#panel h2,#archivePanel h2,#settingsPanel h2{margin:6px 30px 2px 0;font-size:22px}
+#panel .stats,#settingsPanel .stats{color:var(--ink-2);font-size:12.5px;margin-bottom:14px}
+#panel .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#3a2f14;color:var(--gold);margin-left:6px}
+#panel h3,#archivePanel h3,#settingsPanel h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px}
+.chan-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.chan-row .name{font-weight:600;color:var(--ink);text-decoration:none}
+.chan-row .name:hover{color:var(--c0);text-decoration:underline}
+.chan-row .n{color:var(--ink-2);font-size:11.5px}
+.chan-row .stat{color:var(--muted);font-size:11.5px;white-space:nowrap;text-align:right}
+.term{border:0;background:none;color:var(--c0);text-decoration:underline dotted;cursor:pointer;font:inherit;padding:0}
+.explain{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--ink-2);margin:-4px 0 14px;line-height:1.5}
+.explain b{color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:999px;padding:5px 11px;font-size:12.5px;cursor:pointer}
+.chip:hover{border-color:var(--c0)}
+
+.pgroup{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--panel-2)}
+.pgroup-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.pgroup-text{font-size:13.5px;font-weight:600}
+.pgroup-meta{font-size:11px;color:var(--muted)}
+.use-btn{border:1px solid var(--line);background:none;color:var(--ink-2);border-radius:7px;padding:4px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.use-btn:hover{border-color:var(--gold);color:var(--gold)}
+.restore-btn{border:1px solid var(--line);background:none;color:var(--ink-2);border-radius:7px;padding:4px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.restore-btn:hover{border-color:var(--c0);color:var(--c0)}
+.archived-note{font-size:11.5px;color:var(--muted);margin:8px 0 0}
+
+.vid{display:flex;gap:10px;padding:7px 0}
+.vid img{width:88px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;background:var(--line);flex:none;cursor:zoom-in}
+.vid .b{min-width:0}
+.vid a.t{color:var(--ink);font-size:12.5px;font-weight:600;text-decoration:none;display:block;line-height:1.3}
+.vid a.t:hover{text-decoration:underline}
+.vid .m{font-size:11px;color:var(--ink-2);margin-top:3px}
+.vid .x{display:inline-block;background:#3a2f14;color:var(--gold);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700;margin-right:6px}
+.archive-empty{color:var(--muted);font-size:13px;margin-top:8px}
+.arch-kw{font-size:11px;color:var(--c0);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+
+#lightbox{position:fixed;inset:0;z-index:9;background:rgba(2,3,8,.88);display:flex;align-items:center;justify-content:center;padding:24px}
+#lightbox .lb-inner{position:relative;max-width:min(90vw,720px)}
+#lightbox img{max-width:100%;max-height:70vh;border-radius:10px;display:block}
+#lightbox .lb-close{position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:18px;cursor:pointer}
+.lb-actions{display:flex;gap:10px;margin-top:12px;align-items:center}
+.lb-actions button, .lb-actions a{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;text-decoration:none}
+.lb-actions button:hover, .lb-actions a:hover{border-color:var(--c0)}
+.lb-hint{font-size:11.5px;color:var(--muted);margin-top:8px}
+
+.hint{position:fixed;left:20px;bottom:16px;z-index:5;font-size:12px;color:var(--muted)}
+[hidden]{display:none!important}
+</style></head>
+<body>
+<div id="stars"></div><canvas id="starcanvas"></canvas>
+
+<header>
+  <h1>Data backed galaxy <span id="count"></span></h1>
+  <div class="search"><input id="q" type="search" placeholder="Search a word..." autocomplete="off"></div>
+  <div class="toggle"><button id="fDb" aria-pressed="true">Data backed</button><button id="fAll" aria-pressed="false">All words</button></div>
+  <button class="iconbtn" id="archiveOpen">Archive (<span id="archiveCount">0</span>)</button>
+  <button class="iconbtn" id="settingsOpen">Settings</button>
+  <div class="legend" id="legend"></div>
+  <div class="sub" id="sub"></div>
+</header>
+
+<svg id="galaxy"></svg>
+<div class="hint">Click a word for related words + example videos. Click a thumbnail to view/copy it, click a title to open the video. Scroll to zoom, drag to pan.</div>
+
+<div id="panel" data-open="false">
+  <button class="close" id="panelClose" aria-label="Close">&times;</button>
+  <h2 id="pKeyword"></h2>
+  <div class="stats" id="pStats"></div>
+  <h3>Words that go well with it</h3>
+  <div class="chips" id="pRelated"></div>
+  <h3>Premises &amp; example videos</h3>
+  <div id="pPremises"></div>
+</div>
+
+<div id="archivePanel" data-open="false">
+  <button class="close" id="archiveClose" aria-label="Close">&times;</button>
+  <h2>Archive</h2>
+  <div class="stats">Premises marked used — restore one to put it back in the galaxy.</div>
+  <div id="archiveList"></div>
+</div>
+
+<div id="settingsPanel" data-open="false">
+  <button class="close" id="settingsClose" aria-label="Close">&times;</button>
+  <h2>Settings</h2>
+  <div class="stats" id="settingsMeta"></div>
+  <div id="outlierExplain" class="explain" hidden></div>
+  <h3>Channels in this dataset</h3>
+  <div id="channelList"></div>
+</div>
+
+<div id="lightbox" hidden>
+  <div class="lb-inner">
+    <button class="lb-close" id="lbClose" aria-label="Close">&times;</button>
+    <img id="lbImg" src="" alt="">
+    <div class="lb-actions">
+      <button id="lbCopy">Copy image</button>
+      <a id="lbOpen" href="#" target="_blank" rel="noopener">Open original</a>
+    </div>
+    <div class="lb-hint">If "Copy image" doesn't work in your browser, right-click the image and choose Copy Image.</div>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => n>=1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'')+'M' : n>=1e3 ? Math.round(n/1e3)+'K' : n;
+const CATEGORY_COLORS = ['var(--c0)','var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)','var(--c7)'];
+const colorFor = c => c>=0 && c<CATEGORY_COLORS.length ? CATEGORY_COLORS[c] : 'var(--other)';
+
+$('#sub').textContent = `${DATA.total} outlier videos across ${DATA.channels.length} channels. "Data backed" = ${DATA.rule}. See Settings for the channel list and last-updated time.`;
+
+// --- archive state (per-browser, localStorage) ---
+const ARCHIVE_KEY = 'databacked_archive_v1';
+function loadArchive(){
+  try { return new Set(JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function saveArchive(){
+  try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...archive])); } catch (e) {}
+}
+const archive = loadArchive();
+const archKey = (kw, premise) => kw + '||' + premise;
+const isArchived = (kw, premise) => archive.has(archKey(kw, premise));
+function setArchived(kw, premise, on){
+  const key = archKey(kw, premise);
+  if (on) archive.add(key); else archive.delete(key);
+  saveArchive();
+  $('#archiveCount').textContent = archive.size;
+}
+$('#archiveCount').textContent = archive.size;
+
+function unusedPremises(k){ return k.premises.filter(p => !isArchived(k.keyword, p.premise)); }
+function hasUnused(k){ return unusedPremises(k).length > 0; }
+
+// starfield
+(function(){
+  const c = $('#starcanvas'), ctx = c.getContext('2d');
+  function size(){ c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; }
+  size();
+  const stars = Array.from({length: 220}, () => ({x: Math.random(), y: Math.random(), r: Math.random()*1.3+.2, a: Math.random()*.5+.15}));
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#fff';
+    for (const s of stars){
+      ctx.globalAlpha = s.a;
+      ctx.beginPath();
+      ctx.arc(s.x*c.width, s.y*c.height, s.r*devicePixelRatio, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  draw();
+  addEventListener('resize', () => { size(); draw(); });
+})();
+
+let state = { dbOnly: true, selected: null };
+
+function visibleKeywords(){
+  return DATA.keywords.filter(k => (!state.dbOnly || k.data_backed) && hasUnused(k));
+}
+
+const svg = d3.select('#galaxy');
+const zoomLayer = svg.append('g');
+svg.call(d3.zoom().scaleExtent([.25, 4]).on('zoom', e => zoomLayer.attr('transform', e.transform)));
+
+const linkLayer = zoomLayer.append('g');
+const nodeLayer = zoomLayer.append('g');
+
+let simulation, nodeSel, linkSel;
+
+function buildLegend(){
+  const counts = {};
+  DATA.keywords.forEach(k => { counts[k.category] = (counts[k.category] || 0) + 1; });
+  const items = DATA.categories.map((name, i) => ({ i, name, n: counts[i] || 0 })).filter(x => x.n > 0);
+  items.push({ i: -1, name: 'other / uncategorized', n: counts[-1] || 0 });
+  $('#legend').innerHTML = items.map(x => `<span><span class="dot" style="background:${colorFor(x.i)}"></span>${esc(x.name)} (${x.n})</span>`).join('');
+}
+
+function render(){
+  const kws = visibleKeywords();
+  const kwSet = new Set(kws.map(k => k.keyword));
+  const nodes = kws.map(k => ({ ...k, id: k.keyword }));
+  const links = DATA.edges.filter(e => kwSet.has(e.a) && kwSet.has(e.b)).map(e => ({ source: e.a, target: e.b, w: e.w }));
+
+  const rScale = d3.scaleSqrt().domain([0, d3.max(nodes, n => n.score) || 1]).range([9, 42]);
+  $('#count').textContent = `— ${nodes.length} words`;
+
+  linkSel = linkLayer.selectAll('line').data(links, d => d.source + '-' + d.target);
+  linkSel.exit().remove();
+  linkSel = linkSel.enter().append('line').attr('class', 'link').merge(linkSel);
+
+  nodeSel = nodeLayer.selectAll('g.node').data(nodes, d => d.id);
+  nodeSel.exit().remove();
+  const enter = nodeSel.enter().append('g').attr('class', 'node');
+  enter.append('circle');
+  enter.append('text').attr('text-anchor', 'middle').attr('dy', '.32em');
+  nodeSel = enter.merge(nodeSel);
+
+  nodeSel.select('circle')
+    .attr('r', d => rScale(d.score))
+    .attr('fill', d => colorFor(d.category))
+    .attr('fill-opacity', d => d.data_backed ? .92 : .5);
+  nodeSel.select('text')
+    .attr('font-size', d => Math.min(15, Math.max(9, rScale(d.score)*.4)))
+    .text(d => d.keyword);
+
+  nodeSel.on('click', (event, d) => { event.stopPropagation(); select(d); })
+    .call(d3.drag()
+      .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(.25).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  if (simulation) simulation.stop();
+  simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(70).strength(.15))
+    .force('charge', d3.forceManyBody().strength(-140))
+    .force('center', d3.forceCenter(innerWidth/2, innerHeight/2))
+    .force('collide', d3.forceCollide(d => rScale(d.score) + 10))
+    .on('tick', ticked);
+
+  function ticked(){
+    linkSel.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+  }
+
+  buildLegend();
+  applyHighlight();
+}
+
+function applyHighlight(){
+  const sel = state.selected;
+  if (!sel){ nodeSel && nodeSel.classed('dim', false); linkSel && linkSel.classed('hot', false); return; }
+  const neighbors = new Set([sel]);
+  DATA.edges.forEach(e => { if (e.a === sel) neighbors.add(e.b); if (e.b === sel) neighbors.add(e.a); });
+  nodeSel.classed('dim', d => !neighbors.has(d.id));
+  linkSel.classed('hot', d => d.source.id === sel || d.target.id === sel);
+}
+
+function select(d){
+  state.selected = d.id;
+  applyHighlight();
+  $('#archivePanel').dataset.open = 'false';
+  $('#settingsPanel').dataset.open = 'false';
+  openPanel(d);
+}
+
+function relatedWords(kw){
+  return DATA.edges.filter(e => e.a === kw || e.b === kw)
+    .map(e => ({ word: e.a === kw ? e.b : e.a, w: e.w }))
+    .sort((a,b) => b.w - a.w).slice(0, 14);
+}
+
+function videoRow(v){
+  return `<div class="vid">
+      <img loading="lazy" src="${esc(v.thumb)}" alt="" data-full="${esc(v.thumb)}">
+      <div class="b">
+        <a class="t" href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+        <div class="m"><span class="x">${v.outlier}x</span>${esc(v.channel)} · ${fmt(v.views)} views</div>
+      </div>
+    </div>`;
+}
+
+function openPanel(k){
+  $('#pKeyword').innerHTML = esc(k.keyword) + (k.data_backed ? '<span class="badge">Data backed</span>' : '');
+  $('#pStats').textContent = `${k.count} outlier video${k.count===1?'':'s'} across ${k.channels} channel${k.channels===1?'':'s'}, median ${k.median_outlier}x normal views`;
+  const rel = relatedWords(k.keyword);
+  $('#pRelated').innerHTML = rel.length
+    ? rel.map(r => `<button class="chip" data-word="${esc(r.word)}" title="${r.w} shared example${r.w===1?'':'s'}">${esc(r.word)}${r.w>1 ? ` ×${r.w}` : ''}</button>`).join('')
+    : '<span style="color:var(--muted);font-size:13px">No recurring word pairs yet.</span>';
+
+  const active = unusedPremises(k);
+  const archivedCount = k.premises.length - active.length;
+  const groups = active.slice(0, 8).map(p => `
+    <div class="pgroup" data-kw="${esc(k.keyword)}" data-premise="${esc(p.premise)}">
+      <div class="pgroup-head">
+        <div><span class="pgroup-text">${esc(p.premise)}</span><br><span class="pgroup-meta">${p.count} video${p.count===1?'':'s'} · median ${p.median_outlier}x</span></div>
+        <button class="use-btn" data-kw="${esc(k.keyword)}" data-premise="${esc(p.premise)}">Mark used</button>
+      </div>
+      ${p.videos.slice(0, 3).map(videoRow).join('')}
+    </div>`).join('');
+  $('#pPremises').innerHTML = groups + (archivedCount
+    ? `<div class="archived-note">${archivedCount} premise${archivedCount===1?'':'s'} for this word already marked used — see Archive.</div>` : '');
+
+  $('#panel').dataset.open = 'true';
+}
+
+$('#panelClose').onclick = () => { $('#panel').dataset.open = 'false'; state.selected = null; applyHighlight(); };
+svg.on('click', () => { state.selected = null; applyHighlight(); $('#panel').dataset.open = 'false'; });
+$('#pRelated').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const kw = DATA.keywords.find(k => k.keyword === b.dataset.word);
+  if (kw) select({ ...kw, id: kw.keyword });
+});
+$('#pPremises').addEventListener('click', e => {
+  const btn = e.target.closest('.use-btn');
+  if (btn){
+    setArchived(btn.dataset.kw, btn.dataset.premise, true);
+    const k = DATA.keywords.find(x => x.keyword === btn.dataset.kw);
+    if (k && hasUnused(k)) openPanel(k);
+    else { $('#panel').dataset.open = 'false'; state.selected = null; applyHighlight(); }
+    render();
+    return;
+  }
+  const img = e.target.closest('img[data-full]');
+  if (img) openLightbox(img.dataset.full);
+});
+
+function renderArchive(){
+  const rows = [];
+  DATA.keywords.forEach(k => {
+    k.premises.forEach(p => {
+      if (isArchived(k.keyword, p.premise)) rows.push({ kw: k.keyword, premise: p });
+    });
+  });
+  $('#archiveList').innerHTML = rows.length ? rows.map(r => `
+    <div class="pgroup">
+      <div class="arch-kw">${esc(r.kw)}</div>
+      <div class="pgroup-head">
+        <div><span class="pgroup-text">${esc(r.premise.premise)}</span><br><span class="pgroup-meta">${r.premise.count} video${r.premise.count===1?'':'s'} · median ${r.premise.median_outlier}x</span></div>
+        <button class="restore-btn" data-kw="${esc(r.kw)}" data-premise="${esc(r.premise.premise)}">Restore</button>
+      </div>
+      ${r.premise.videos.slice(0, 2).map(videoRow).join('')}
+    </div>`).join('') : '<div class="archive-empty">Nothing archived yet. Mark a premise &quot;used&quot; from any word&#39;s panel.</div>';
+}
+
+const OUTLIER_EXPLAIN = `
+  <b>How an outlier is calculated:</b> for each channel, we pull its recent uploads, keep only
+  long-form videos (4+ minutes) that are at least 14 days old (so early view-count noise doesn't
+  count), then take the plain average views across all of those. That average is the channel's
+  baseline. Every video's outlier score is just <b>its views &divide; that baseline</b>. A video
+  needs to hit <b>{OUTLIER_MIN}</b> to count as an outlier here &mdash; it's a real number pulled
+  from YouTube's stats, not an estimate.`;
+
+function renderSettings(){
+  $('#settingsMeta').innerHTML = `Last updated ${DATA.generated}. Outlier bar: ${DATA.outlier_min}x+ each channel's own long-form average view count (<button class="term" id="outlierTerm">what's an outlier?</button>). "Data backed" = ${DATA.rule}.`;
+  $('#outlierExplain').innerHTML = OUTLIER_EXPLAIN.replace('{OUTLIER_MIN}', DATA.outlier_min + 'x');
+  $('#outlierTerm').onclick = () => { $('#outlierExplain').hidden = !$('#outlierExplain').hidden; };
+  const fmtSubs = n => n>=1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'')+'M' : n>=1e3 ? Math.round(n/1e3)+'K' : n;
+  $('#channelList').innerHTML = (DATA.channel_stats || []).map(c => `
+    <div class="chan-row">
+      <div><a class="name" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a><div class="n">${fmtSubs(c.subs)} subscribers · avg ${fmtSubs(c.avg_views)} views/long-form video</div></div>
+      <div class="stat">${c.outliers} outliers<br>${c.long_form} long-form / ${c.uploads_scanned} scanned</div>
+    </div>`).join('') || '<div class="archive-empty">No channel data.</div>';
+}
+$('#settingsOpen').onclick = () => { renderSettings(); $('#settingsPanel').dataset.open = 'true'; $('#panel').dataset.open = 'false'; $('#archivePanel').dataset.open = 'false'; };
+$('#settingsClose').onclick = () => { $('#settingsPanel').dataset.open = 'false'; };
+
+$('#archiveOpen').onclick = () => { renderArchive(); $('#archivePanel').dataset.open = 'true'; $('#panel').dataset.open = 'false'; $('#settingsPanel').dataset.open = 'false'; };
+$('#archiveClose').onclick = () => { $('#archivePanel').dataset.open = 'false'; };
+$('#archiveList').addEventListener('click', e => {
+  const btn = e.target.closest('.restore-btn');
+  if (btn){ setArchived(btn.dataset.kw, btn.dataset.premise, false); renderArchive(); render(); return; }
+  const img = e.target.closest('img[data-full]');
+  if (img) openLightbox(img.dataset.full);
+});
+
+// --- lightbox ---
+function openLightbox(src){
+  $('#lbImg').src = src;
+  $('#lbOpen').href = src;
+  $('#lbCopy').textContent = 'Copy image';
+  $('#lightbox').hidden = false;
+}
+function closeLightbox(){ $('#lightbox').hidden = true; }
+$('#lbClose').onclick = closeLightbox;
+$('#lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
+$('#lbCopy').onclick = async () => {
+  try {
+    const res = await fetch($('#lbImg').src, { mode: 'cors' });
+    const blob = await res.blob();
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+    $('#lbCopy').textContent = 'Copied!';
+  } catch (e) {
+    $('#lbCopy').textContent = 'Right-click to copy';
+  }
+};
+
+$('#fDb').onclick = () => { state.dbOnly = true; $('#fDb').ariaPressed = true; $('#fAll').ariaPressed = false; render(); };
+$('#fAll').onclick = () => { state.dbOnly = false; $('#fAll').ariaPressed = true; $('#fDb').ariaPressed = false; render(); };
+
+$('#q').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { nodeSel && nodeSel.classed('dim', false); return; }
+  nodeSel && nodeSel.classed('dim', d => !d.keyword.includes(q));
+});
+$('#q').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const q = e.target.value.trim().toLowerCase();
+  const hit = visibleKeywords().find(k => k.keyword.includes(q));
+  if (hit) select({ ...hit, id: hit.keyword });
+});
+
+addEventListener('resize', () => { if (simulation) simulation.force('center', d3.forceCenter(innerWidth/2, innerHeight/2)).alpha(.3).restart(); });
+
+render();
+</script>
+</body></html>
