@@ -1,6 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Data backed galaxy</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg-0:#05060c; --bg-1:#0b0e1a; --panel:#11131f; --panel-2:#171a2a; --line:#262a40;
@@ -36,29 +37,59 @@ h1 span{color:var(--ink-2);font-weight:500}
 .toggle{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px}
 .toggle button{border:0;background:none;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--ink-2)}
 .toggle button[aria-pressed="true"]{background:var(--panel-2);color:var(--ink)}
-.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 13px;font-size:13px;cursor:pointer;color:var(--ink-2)}
-.iconbtn:hover{color:var(--ink);border-color:var(--c0)}
-.legend{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--ink-2);flex-wrap:wrap}
+.legend{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--ink-2);flex-wrap:wrap}
 .legend .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
-.sub{width:100%;font-size:12px;color:var(--muted)}
+.legend-item{display:inline-flex;align-items:center;gap:0;cursor:pointer;user-select:none}
+.legend-item input{margin:0 5px 0 0;accent-color:var(--c0)}
 
 svg#galaxy{position:fixed;inset:0;z-index:1;width:100%;height:100%;cursor:grab}
 svg#galaxy:active{cursor:grabbing}
 .node text{fill:var(--ink);font-size:11px;pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.65);stroke-width:3px}
+.cluster-label{fill:rgba(242,243,248,.16);font-size:34px;font-weight:800;letter-spacing:.02em;pointer-events:none;text-transform:uppercase}
 .node circle{stroke:rgba(255,255,255,.18);stroke-width:1px;cursor:pointer}
 .node.dim{opacity:.12}
 .link{stroke:#8892b8;stroke-opacity:.15}
 .link.hot{stroke:#e8ecff;stroke-opacity:.55}
 
-#panel,#archivePanel,#settingsPanel{position:fixed;top:0;right:0;bottom:0;z-index:6;width:380px;max-width:92vw;background:var(--panel);
-  border-left:1px solid var(--line);padding:calc(18px + env(safe-area-inset-top,0px)) 18px 18px;overflow:auto;
-  transform:translateX(100%);transition:transform .22s ease;box-shadow:-24px 0 48px rgba(0,0,0,.35)}
-#panel[data-open="true"],#archivePanel[data-open="true"],#settingsPanel[data-open="true"]{transform:translateX(0)}
-#panel .close,#archivePanel .close,#settingsPanel .close{position:absolute;top:14px;right:14px;background:none;border:0;color:var(--ink-2);font-size:20px;cursor:pointer;line-height:1}
-#panel h2,#archivePanel h2,#settingsPanel h2{margin:6px 30px 2px 0;font-size:22px}
-#panel .stats,#settingsPanel .stats{color:var(--ink-2);font-size:12.5px;margin-bottom:14px}
-#panel .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#3a2f14;color:var(--gold);margin-left:6px}
-#panel h3,#archivePanel h3,#settingsPanel h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px}
+#sidebar{position:fixed;top:0;right:0;bottom:0;z-index:6;width:380px;max-width:92vw;background:var(--panel);
+  border-left:1px solid var(--line);display:flex;flex-direction:column;
+  transform:translateX(0);transition:transform .22s ease;box-shadow:-24px 0 48px rgba(0,0,0,.35)}
+#sidebar[data-collapsed="true"]{transform:translateX(100%)}
+.tabbar{display:flex;gap:4px;flex:none;padding:calc(14px + env(safe-area-inset-top,0px)) 14px 10px;border-bottom:1px solid var(--line)}
+.tabbtn{flex:1;border:0;background:var(--panel-2);color:var(--ink-2);border-radius:8px;padding:8px 4px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.tabbtn[aria-pressed="true"]{background:var(--c0);color:#fff}
+.collapse-btn{position:absolute;top:14px;right:10px;background:none;border:0;color:var(--ink-2);font-size:20px;cursor:pointer;line-height:1;z-index:1}
+.collapse-btn:hover{color:var(--ink)}
+#sidebarHandle{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:7;background:var(--panel);
+  border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;padding:16px 8px;color:var(--ink-2);cursor:pointer;font-size:13px}
+#sidebarHandle:hover{color:var(--ink);border-color:var(--c0)}
+.tabpane{flex:1;overflow:auto;padding:14px 18px 18px;position:relative}
+#miniMenu{display:flex;gap:8px}
+.minibtn{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:9px;padding:8px 13px;font-size:12.5px;cursor:pointer}
+.minibtn:hover{color:var(--ink);border-color:var(--c0)}
+.minipopup{position:fixed;top:calc(var(--header-h, 100px) + 52px);left:16px;z-index:8;width:320px;max-width:80vw;max-height:min(70vh,560px);
+  overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 16px 18px;
+  box-shadow:0 16px 40px rgba(0,0,0,.45)}
+.minipopup .close{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--ink-2);font-size:18px;cursor:pointer;line-height:1}
+#sidebar h2{margin:6px 30px 2px 0;font-size:22px}
+#sidebar .stats{color:var(--ink-2);font-size:12.5px;margin-bottom:14px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:#3a2f14;color:var(--gold);margin-left:6px}
+#sidebar h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 8px}
+.browse-controls{display:flex;gap:8px;margin:10px 0 14px;position:sticky;top:0;background:var(--panel);padding-bottom:8px;z-index:1}
+.browse-controls input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.browse-controls select{padding:8px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.browse-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:6px}
+.browse-row:hover{background:var(--panel-2)}
+.browse-row .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.grade{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;
+  border:1px solid;font-size:11px;font-weight:800;flex:none}
+.trend{font-size:13px;flex:none;color:var(--ink-2)}
+.trend-rising{color:var(--c2)}
+.trend-cooling{color:var(--c7)}
+.trend-new{color:var(--c4)}
+.browse-row .kw{font-weight:600;font-size:13.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.browse-row .meta{font-size:11px;color:var(--muted);white-space:nowrap;text-align:right}
+.browse-count{font-size:11.5px;color:var(--muted);margin-bottom:4px}
 .chan-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
 .chan-row .name{font-weight:600;color:var(--ink);text-decoration:none}
 .chan-row .name:hover{color:var(--c0);text-decoration:underline}
@@ -80,6 +111,9 @@ svg#galaxy:active{cursor:grabbing}
 .restore-btn{border:1px solid var(--line);background:none;color:var(--ink-2);border-radius:7px;padding:4px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .restore-btn:hover{border-color:var(--c0);color:var(--c0)}
 .archived-note{font-size:11.5px;color:var(--muted);margin:8px 0 0}
+.best-proof{border:1px solid var(--gold);border-radius:10px;padding:10px 12px 4px;margin-bottom:14px;background:#3a2f1422}
+.best-proof-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.best-proof-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:700;margin-bottom:2px}
 
 .vid{display:flex;gap:10px;padding:7px 0}
 .vid img{width:88px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;background:var(--line);flex:none;cursor:zoom-in}
@@ -88,6 +122,7 @@ svg#galaxy:active{cursor:grabbing}
 .vid a.t:hover{text-decoration:underline}
 .vid .m{font-size:11px;color:var(--ink-2);margin-top:3px}
 .vid .x{display:inline-block;background:#3a2f14;color:var(--gold);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700;margin-right:6px}
+.vid .r{display:inline-block;background:var(--panel-2);color:var(--ink-2);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:600;margin-right:6px;border:1px solid var(--line)}
 .archive-empty{color:var(--muted);font-size:13px;margin-top:8px}
 .arch-kw{font-size:11px;color:var(--c0);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
 
@@ -109,41 +144,82 @@ svg#galaxy:active{cursor:grabbing}
 <header>
   <h1>Data backed galaxy <span id="count"></span></h1>
   <div class="search"><input id="q" type="search" placeholder="Search a word..." autocomplete="off"></div>
-  <div class="toggle"><button id="fDb" aria-pressed="true">Data backed</button><button id="fAll" aria-pressed="false">All words</button></div>
-  <button class="iconbtn" id="archiveOpen">Archive (<span id="archiveCount">0</span>)</button>
-  <button class="iconbtn" id="settingsOpen">Settings</button>
+  <div class="toggle"><button id="fDb" aria-pressed="true">Data backed</button><button id="fAll" aria-pressed="false">All words</button><button id="fFallback" aria-pressed="false">Search anything</button></div>
+  <div id="miniMenu">
+    <button class="minibtn" id="surpriseMe">🎲 Surprise me</button>
+    <button class="minibtn" id="miniArchiveBtn">📦 Archive (<span id="archiveCount">0</span>)</button>
+    <button class="minibtn" id="miniSettingsBtn">⚙ Settings</button>
+  </div>
   <div class="legend" id="legend"></div>
-  <div class="sub" id="sub"></div>
 </header>
 
 <svg id="galaxy"></svg>
 <div class="hint">Click a word for related words + example videos. Click a thumbnail to view/copy it, click a title to open the video. Scroll to zoom, drag to pan.</div>
+<button id="fitView" class="minibtn" style="position:fixed;left:20px;bottom:50px;z-index:5">⤢ Fit whole map</button>
 
-<div id="panel" data-open="false">
-  <button class="close" id="panelClose" aria-label="Close">&times;</button>
-  <h2 id="pKeyword"></h2>
-  <div class="stats" id="pStats"></div>
-  <h3>Words that go well with it</h3>
-  <div class="chips" id="pRelated"></div>
-  <h3>Premises &amp; example videos</h3>
-  <div id="pPremises"></div>
-</div>
-
-<div id="archivePanel" data-open="false">
-  <button class="close" id="archiveClose" aria-label="Close">&times;</button>
-  <h2>Archive</h2>
-  <div class="stats">Premises marked used — restore one to put it back in the galaxy.</div>
-  <div id="archiveList"></div>
-</div>
-
-<div id="settingsPanel" data-open="false">
-  <button class="close" id="settingsClose" aria-label="Close">&times;</button>
+<div id="miniSettingsPopup" class="minipopup" hidden>
+  <button class="close" id="miniSettingsClose" aria-label="Close">&times;</button>
   <h2>Settings</h2>
   <div class="stats" id="settingsMeta"></div>
   <div id="outlierExplain" class="explain" hidden></div>
   <h3>Channels in this dataset</h3>
   <div id="channelList"></div>
 </div>
+
+<div id="miniArchivePopup" class="minipopup" hidden>
+  <button class="close" id="miniArchiveClose" aria-label="Close">&times;</button>
+  <h2>Archive</h2>
+  <div class="stats">Premises marked used — restore one to put it back in the galaxy.</div>
+  <div id="archiveList"></div>
+</div>
+
+<div id="sidebar" data-collapsed="true">
+  <div class="tabbar">
+    <button class="tabbtn" data-tab="word" aria-pressed="false">Word</button>
+    <button class="tabbtn" data-tab="browse" aria-pressed="true">Browse</button>
+    <button class="tabbtn" data-tab="frameworks" aria-pressed="false">Frameworks</button>
+  </div>
+  <button class="collapse-btn" id="sidebarCollapse" title="Collapse panel">»</button>
+
+  <div class="tabpane" data-pane="word" hidden>
+    <h2 id="pKeyword"></h2>
+    <div class="stats" id="pStats"></div>
+    <h3 id="pRelatedHead">Words that go well with it</h3>
+    <div class="chips" id="pRelated"></div>
+    <h3 id="pPremisesHead">Premises &amp; example videos</h3>
+    <div id="pPremises"></div>
+  </div>
+
+  <div class="tabpane" data-pane="browse">
+    <h2>Browse all words</h2>
+    <div class="browse-controls">
+      <input id="browseSearch" type="search" placeholder="Search keywords..." autocomplete="off">
+      <select id="browseSort">
+        <option value="score">Sort: score</option>
+        <option value="count">Sort: video count</option>
+        <option value="outlier">Sort: median outlier</option>
+        <option value="az">Sort: A-Z</option>
+      </select>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);margin-bottom:10px">
+      <input type="checkbox" id="browseDbOnly" checked> Data backed only
+    </label>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)">
+        <input type="checkbox" id="browseSelectAll"> <span id="browseCount"></span>
+      </label>
+      <button class="minibtn" id="exportCsv">⬇ Export selected</button>
+    </div>
+    <div id="browseList"></div>
+  </div>
+
+  <div class="tabpane" data-pane="frameworks" hidden>
+    <h2>Title frameworks</h2>
+    <div class="stats">Word pairs that show up together far more than chance — ranked by lift. These are proven two-word combos to build a title around.</div>
+    <div id="frameworksList"></div>
+  </div>
+</div>
+<button id="sidebarHandle" title="Show panel">‹ Panel</button>
 
 <div id="lightbox" hidden>
   <div class="lb-inner">
@@ -158,37 +234,165 @@ svg#galaxy:active{cursor:grabbing}
 </div>
 
 <script>
-const DATA = /*__DATA__*/null;
+let DATA = /*__DATA__*/null;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = n => n>=1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'')+'M' : n>=1e3 ? Math.round(n/1e3)+'K' : n;
-const CATEGORY_COLORS = ['var(--c0)','var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)','var(--c7)'];
-const colorFor = c => c>=0 && c<CATEGORY_COLORS.length ? CATEGORY_COLORS[c] : 'var(--other)';
+// slot colors: WHO=blue, ACTION=orange, ENDING=aqua, STAKES=red. Validated as a
+// set for colorblind-safe all-pairs separation (see dataviz palette validator).
+const SLOT_COLORS = ['#3987e5', '#d95926', '#199e70', '#e66767', '#9085e9'];
+const SLOT_DIM = '#171a2a'; // panel-2 - "zero intensity" anchor so pale nodes recede into the UI
+const OUTLIER_FLOOR = DATA.outlier_min || 2;
+const OUTLIER_CEIL = 8; // outlier at/above this renders at full saturation
 
-$('#sub').textContent = `${DATA.total} outlier videos across ${DATA.channels.length} channels. "Data backed" = ${DATA.rule}. See Settings for the channel list and last-updated time.`;
+function intensity(outlier){
+  const t = (Math.log(Math.max(outlier, OUTLIER_FLOOR)) - Math.log(OUTLIER_FLOOR)) /
+            (Math.log(OUTLIER_CEIL) - Math.log(OUTLIER_FLOOR));
+  return Math.max(.22, Math.min(1, t));
+}
+function slotColor(slot, outlier){
+  if (slot == null || slot < 0 || slot >= SLOT_COLORS.length) return 'var(--other)';
+  return d3.interpolateLab(SLOT_DIM, SLOT_COLORS[slot])(intensity(outlier));
+}
+let activeSlots = new Set([0, 1, 2, 3, 4, -1]);
 
-// --- archive state (per-browser, localStorage) ---
-const ARCHIVE_KEY = 'databacked_archive_v1';
-function loadArchive(){
-  try { return new Set(JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]')); }
-  catch (e) { return new Set(); }
-}
-function saveArchive(){
-  try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...archive])); } catch (e) {}
-}
-const archive = loadArchive();
+// --- archive state (shared across everyone, via Supabase) ---
+const SUPABASE_URL = 'https://gjksyrsfmszhewtwtdej.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_bxifeMb2ZEzTrLbG6TEwwA_n6-15_hs';
+const SB_HEADERS = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+const ARCHIVE_TABLE = `${SUPABASE_URL}/rest/v1/archived_premises`;
+const SNAPSHOT_TABLE = `${SUPABASE_URL}/rest/v1/library_snapshots`;
+const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+const archive = new Set();
+const archivedBy = new Map();
 const archKey = (kw, premise) => kw + '||' + premise;
 const isArchived = (kw, premise) => archive.has(archKey(kw, premise));
-function setArchived(kw, premise, on){
-  const key = archKey(kw, premise);
-  if (on) archive.add(key); else archive.delete(key);
-  saveArchive();
-  $('#archiveCount').textContent = archive.size;
+
+function getArchiverName(){
+  let name = '';
+  try { name = localStorage.getItem('archiver_name') || ''; } catch (e) {}
+  if (!name) {
+    name = (prompt("Quick — what's your name? (shown next to what you archive)") || '').trim() || 'Someone';
+    try { localStorage.setItem('archiver_name', name); } catch (e) {}
+  }
+  return name;
 }
-$('#archiveCount').textContent = archive.size;
+
+function fetchWithTimeout(url, opts, ms = 8000){
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+let archiveFetchToken = 0;
+async function fetchArchive(){
+  const token = ++archiveFetchToken;
+  try {
+    const res = await fetchWithTimeout(`${ARCHIVE_TABLE}?select=key,archived_by`, { headers: SB_HEADERS });
+    if (!res.ok) throw new Error(`Supabase ${res.status}`);
+    const rows = await res.json();
+    if (token !== archiveFetchToken) return; // a newer fetch already started - this response is stale, ignore it
+    archive.clear(); archivedBy.clear();
+    rows.forEach(r => { archive.add(r.key); if (r.archived_by) archivedBy.set(r.key, r.archived_by); });
+  } catch (e) {
+    console.error('Could not reach shared archive, showing last-known state', e);
+  }
+  if (token === archiveFetchToken) $('#archiveCount').textContent = archive.size;
+}
+
+function isValidPayload(p){
+  return !!p && Array.isArray(p.keywords) && p.keywords.length > 0 &&
+         Array.isArray(p.all_videos) && p.all_videos.length > 0 && Array.isArray(p.slots);
+}
+
+// DATA starts as whatever was baked into this file at build time, so the page always
+// has something to render immediately. This fetches the latest live snapshots from
+// Supabase and swaps in the newest one that passes a basic sanity check - if the very
+// latest scrape produced something corrupt/empty, this rolls back to the last good one
+// instead of pushing broken data to everyone using the tool. If Supabase is unreachable
+// entirely, it just keeps running on the baked-in snapshot instead of breaking.
+async function fetchLiveLibraryData(){
+  try {
+    const res = await fetchWithTimeout(`${SNAPSHOT_TABLE}?select=payload&order=id.desc&limit=5`, { headers: SB_HEADERS });
+    if (!res.ok) throw new Error(`Supabase ${res.status}`);
+    const rows = await res.json();
+    const good = rows.find(r => isValidPayload(r.payload));
+    if (!good) return;
+    DATA = good.payload;
+    render();
+    renderBrowse();
+  } catch (e) {
+    console.error('Could not reach live library data, using the snapshot baked in at last build', e);
+  }
+}
+
+// pessimistic by design: local state only changes once Supabase confirms the write, so
+// the UI can never show something as archived/restored that the shared table disagrees
+// with (previous optimistic-update version could silently diverge on any failed write).
+async function setArchived(kw, premise, on){
+  const key = archKey(kw, premise);
+  try {
+    const res = on
+      ? await fetchWithTimeout(`${ARCHIVE_TABLE}?on_conflict=key`, {
+          method: 'POST', headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify({ key, keyword: kw, premise, archived_by: getArchiverName() }),
+        })
+      : await fetchWithTimeout(`${ARCHIVE_TABLE}?key=eq.${encodeURIComponent(key)}`, {
+          method: 'DELETE', headers: SB_HEADERS,
+        });
+    if (!res.ok) throw new Error(`Supabase ${res.status}`);
+  } catch (e) {
+    console.error('Archive change did not save', e);
+    alert("Couldn't save that — check your connection and try again.");
+    return false;
+  }
+  if (on) { archive.add(key); archivedBy.set(key, getArchiverName()); }
+  else { archive.delete(key); archivedBy.delete(key); }
+  $('#archiveCount').textContent = archive.size;
+  return true;
+}
 
 function unusedPremises(k){ return k.premises.filter(p => !isArchived(k.keyword, p.premise)); }
 function hasUnused(k){ return unusedPremises(k).length > 0; }
+
+// --- sidebar tabs ---
+function setSidebarCollapsed(collapsed){
+  $('#sidebar').dataset.collapsed = collapsed ? 'true' : 'false';
+  $('#sidebarHandle').hidden = !collapsed;
+  if (simulation) simulation.force('center', d3.forceCenter(graphCenterX(), innerHeight/2)).alpha(.3).restart();
+}
+function switchTab(tab){
+  document.querySelectorAll('.tabpane').forEach(p => { p.hidden = p.dataset.pane !== tab; });
+  document.querySelectorAll('.tabbtn').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === tab ? 'true' : 'false'));
+  setSidebarCollapsed(false);
+  if (tab === 'browse') renderBrowse();
+  if (tab === 'frameworks') renderFrameworks();
+}
+document.querySelectorAll('.tabbtn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+$('#sidebarCollapse').onclick = () => setSidebarCollapsed(true);
+$('#sidebarHandle').onclick = () => setSidebarCollapsed(false);
+
+// --- mini menu (Settings / Archive) ---
+function positionPopup(popup, btn){
+  const r = btn.getBoundingClientRect();
+  popup.style.left = Math.min(r.left, innerWidth - 336) + 'px';
+}
+function openMiniPopup(which){
+  const settingsOpen = which === 'settings';
+  const archiveOpen = which === 'archive';
+  $('#miniSettingsPopup').hidden = !settingsOpen;
+  $('#miniArchivePopup').hidden = !archiveOpen;
+  if (settingsOpen) { renderSettings(); positionPopup($('#miniSettingsPopup'), $('#miniSettingsBtn')); }
+  if (archiveOpen) {
+    positionPopup($('#miniArchivePopup'), $('#miniArchiveBtn'));
+    fetchArchive().then(() => { renderArchive(); render(); });
+  }
+}
+function closeMiniPopups(){ $('#miniSettingsPopup').hidden = true; $('#miniArchivePopup').hidden = true; }
+$('#miniSettingsBtn').onclick = () => { openMiniPopup($('#miniSettingsPopup').hidden ? 'settings' : null); };
+$('#miniArchiveBtn').onclick = () => { openMiniPopup($('#miniArchivePopup').hidden ? 'archive' : null); };
+$('#miniSettingsClose').onclick = closeMiniPopups;
+$('#miniArchiveClose').onclick = closeMiniPopups;
 
 // starfield
 (function(){
@@ -211,27 +415,73 @@ function hasUnused(k){ return unusedPremises(k).length > 0; }
   addEventListener('resize', () => { size(); draw(); });
 })();
 
-let state = { dbOnly: true, selected: null };
+let state = { dbOnly: true, fallback: false, selected: null };
 
 function visibleKeywords(){
-  return DATA.keywords.filter(k => (!state.dbOnly || k.data_backed) && hasUnused(k));
+  return DATA.keywords.filter(k => (!state.dbOnly || k.data_backed) && hasUnused(k) && activeSlots.has(k.slot));
 }
 
 const svg = d3.select('#galaxy');
 const zoomLayer = svg.append('g');
-svg.call(d3.zoom().scaleExtent([.25, 4]).on('zoom', e => zoomLayer.attr('transform', e.transform)));
+const zoom = d3.zoom().scaleExtent([.03, 4]).on('zoom', e => zoomLayer.attr('transform', e.transform));
+svg.call(zoom);
+
+function fitToScreen(){
+  const bounds = nodeLayer.node().getBBox();
+  if (!bounds.width || !bounds.height) return;
+  const scale = Math.max(.03, Math.min(4, Math.min(innerWidth / bounds.width, innerHeight / bounds.height) * 0.88));
+  const tx = innerWidth / 2 - scale * (bounds.x + bounds.width / 2);
+  const ty = innerHeight / 2 - scale * (bounds.y + bounds.height / 2);
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}
 
 const linkLayer = zoomLayer.append('g');
+const clusterLabelLayer = zoomLayer.append('g');
 const nodeLayer = zoomLayer.append('g');
+
+function clusterCenter(slot){
+  const cx = graphCenterX(), cy = innerHeight / 2;
+  if (slot == null || slot < 0) return { x: cx, y: cy };
+  const n = SLOT_COLORS.length;
+  const angle = (slot / n) * 2 * Math.PI - Math.PI / 2;
+  const r = Math.min(innerWidth, innerHeight) * 0.32;
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+}
+
+function renderClusterLabels(){
+  const present = [...new Set(nodeLayer.selectAll('g.node').data().map(d => d.slot))];
+  const items = present.filter(s => s >= 0).map(s => ({ s, name: DATA.slots[s], ...clusterCenter(s) }));
+  const sel = clusterLabelLayer.selectAll('text.cluster-label').data(items, d => d.s);
+  sel.exit().remove();
+  sel.enter().append('text').attr('class', 'cluster-label').attr('text-anchor', 'middle')
+    .merge(sel)
+    .attr('x', d => d.x).attr('y', d => d.y)
+    .text(d => d.name);
+}
 
 let simulation, nodeSel, linkSel;
 
 function buildLegend(){
   const counts = {};
-  DATA.keywords.forEach(k => { counts[k.category] = (counts[k.category] || 0) + 1; });
-  const items = DATA.categories.map((name, i) => ({ i, name, n: counts[i] || 0 })).filter(x => x.n > 0);
-  items.push({ i: -1, name: 'other / uncategorized', n: counts[-1] || 0 });
-  $('#legend').innerHTML = items.map(x => `<span><span class="dot" style="background:${colorFor(x.i)}"></span>${esc(x.name)} (${x.n})</span>`).join('');
+  DATA.keywords.forEach(k => { counts[k.slot] = (counts[k.slot] || 0) + 1; });
+  const items = DATA.slots.map((name, i) => ({ i, name, n: counts[i] || 0 }));
+  items.push({ i: -1, name: 'unclassified', n: counts[-1] || 0 });
+  $('#legend').innerHTML = items.map(x => `
+    <label class="legend-item">
+      <input type="checkbox" data-slot="${x.i}" ${activeSlots.has(x.i) ? 'checked' : ''}>
+      <span class="dot" style="background:${x.i>=0 ? SLOT_COLORS[x.i] : 'var(--other)'}"></span>${esc(x.name)} (${x.n})
+    </label>`).join('');
+  syncHeaderHeight();
+}
+$('#legend').addEventListener('change', e => {
+  const cb = e.target.closest('input[data-slot]'); if (!cb) return;
+  const slot = Number(cb.dataset.slot);
+  if (cb.checked) activeSlots.add(slot); else activeSlots.delete(slot);
+  render();
+});
+
+function syncHeaderHeight(){
+  document.documentElement.style.setProperty('--header-h', document.querySelector('header').offsetHeight + 'px');
 }
 
 function render(){
@@ -256,7 +506,7 @@ function render(){
 
   nodeSel.select('circle')
     .attr('r', d => rScale(d.score))
-    .attr('fill', d => colorFor(d.category))
+    .attr('fill', d => slotColor(d.slot, d.median_outlier))
     .attr('fill-opacity', d => d.data_backed ? .92 : .5);
   nodeSel.select('text')
     .attr('font-size', d => Math.min(15, Math.max(9, rScale(d.score)*.4)))
@@ -270,11 +520,14 @@ function render(){
 
   if (simulation) simulation.stop();
   simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(70).strength(.15))
-    .force('charge', d3.forceManyBody().strength(-140))
-    .force('center', d3.forceCenter(innerWidth/2, innerHeight/2))
-    .force('collide', d3.forceCollide(d => rScale(d.score) + 10))
+    .force('link', d3.forceLink(links).id(d => d.id).distance(50).strength(.1))
+    .force('charge', d3.forceManyBody().strength(-90))
+    .force('x', d3.forceX(d => clusterCenter(d.slot).x).strength(.12))
+    .force('y', d3.forceY(d => clusterCenter(d.slot).y).strength(.12))
+    .force('collide', d3.forceCollide(d => rScale(d.score) + 6))
     .on('tick', ticked);
+
+  renderClusterLabels();
 
   function ticked(){
     linkSel.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
@@ -295,17 +548,22 @@ function applyHighlight(){
 }
 
 function select(d){
+  // clicking (or finding) a real keyword always leaves fallback mode - and drops
+  // out of "data backed only" if the keyword itself doesn't qualify - so the
+  // visible mode toggle never silently diverges from what's actually on screen.
+  if (state.fallback || (state.dbOnly && !d.data_backed)) {
+    setMode(d.data_backed ? 'db' : 'all');
+  }
   state.selected = d.id;
   applyHighlight();
-  $('#archivePanel').dataset.open = 'false';
-  $('#settingsPanel').dataset.open = 'false';
   openPanel(d);
+  switchTab('word');
 }
 
 function relatedWords(kw){
   return DATA.edges.filter(e => e.a === kw || e.b === kw)
-    .map(e => ({ word: e.a === kw ? e.b : e.a, w: e.w }))
-    .sort((a,b) => b.w - a.w).slice(0, 14);
+    .map(e => ({ word: e.a === kw ? e.b : e.a, w: e.w, lift: e.lift }))
+    .sort((a,b) => b.lift - a.lift).slice(0, 14);
 }
 
 function videoRow(v){
@@ -313,21 +571,33 @@ function videoRow(v){
       <img loading="lazy" src="${esc(v.thumb)}" alt="" data-full="${esc(v.thumb)}">
       <div class="b">
         <a class="t" href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title)}</a>
-        <div class="m"><span class="x">${v.outlier}x</span>${esc(v.channel)} · ${fmt(v.views)} views</div>
+        <div class="m"><span class="x">${v.outlier}x</span><span class="r" title="Runner multiplier: views ÷ channel subscribers">${v.runner}x subs</span>${esc(v.channel)} · ${fmt(v.views)} views</div>
       </div>
     </div>`;
 }
 
 function openPanel(k){
-  $('#pKeyword').innerHTML = esc(k.keyword) + (k.data_backed ? '<span class="badge">Data backed</span>' : '');
-  $('#pStats').textContent = `${k.count} outlier video${k.count===1?'':'s'} across ${k.channels} channel${k.channels===1?'':'s'}, median ${k.median_outlier}x normal views`;
+  $('#pRelatedHead').hidden = false;
+  $('#pPremisesHead').textContent = 'Premises & example videos';
+  $('#pKeyword').innerHTML = `${gradeBadge(k.grade)}${trendBadge(k.trend)} ${esc(k.keyword)}` +
+    (k.data_backed ? '<span class="badge">Data backed</span>' : '');
+  $('#pStats').textContent = `${k.count} outlier video${k.count===1?'':'s'} across ${k.channels} channel${k.channels===1?'':'s'}, median ${k.median_outlier}x normal views, median ${k.median_runner}x subscriber runner`;
   const rel = relatedWords(k.keyword);
   $('#pRelated').innerHTML = rel.length
-    ? rel.map(r => `<button class="chip" data-word="${esc(r.word)}" title="${r.w} shared example${r.w===1?'':'s'}">${esc(r.word)}${r.w>1 ? ` ×${r.w}` : ''}</button>`).join('')
+    ? rel.map(r => `<button class="chip" data-word="${esc(r.word)}" title="Lift ${r.lift}x · ${r.w} shared example${r.w===1?'':'s'}">${esc(r.word)} ×${r.lift}</button>`).join('')
     : '<span style="color:var(--muted);font-size:13px">No recurring word pairs yet.</span>';
 
   const active = unusedPremises(k);
   const archivedCount = k.premises.length - active.length;
+  const bestPick = active.flatMap(p => p.videos.map(v => ({ v, premise: p.premise })))
+    .sort((a,b) => b.v.outlier - a.v.outlier)[0];
+  const bestProof = bestPick ? `<div class="best-proof">
+      <div class="best-proof-head">
+        <div class="best-proof-label">Best proof</div>
+        <button class="use-btn" data-kw="${esc(k.keyword)}" data-premise="${esc(bestPick.premise)}">Mark used</button>
+      </div>
+      ${videoRow(bestPick.v)}
+    </div>` : '';
   const groups = active.slice(0, 8).map(p => `
     <div class="pgroup" data-kw="${esc(k.keyword)}" data-premise="${esc(p.premise)}">
       <div class="pgroup-head">
@@ -336,26 +606,26 @@ function openPanel(k){
       </div>
       ${p.videos.slice(0, 3).map(videoRow).join('')}
     </div>`).join('');
-  $('#pPremises').innerHTML = groups + (archivedCount
+  $('#pPremises').innerHTML = bestProof + groups + (archivedCount
     ? `<div class="archived-note">${archivedCount} premise${archivedCount===1?'':'s'} for this word already marked used — see Archive.</div>` : '');
-
-  $('#panel').dataset.open = 'true';
 }
 
-$('#panelClose').onclick = () => { $('#panel').dataset.open = 'false'; state.selected = null; applyHighlight(); };
-svg.on('click', () => { state.selected = null; applyHighlight(); $('#panel').dataset.open = 'false'; });
+svg.on('click', () => { state.selected = null; applyHighlight(); });
 $('#pRelated').addEventListener('click', e => {
   const b = e.target.closest('.chip'); if (!b) return;
   const kw = DATA.keywords.find(k => k.keyword === b.dataset.word);
   if (kw) select({ ...kw, id: kw.keyword });
 });
-$('#pPremises').addEventListener('click', e => {
+$('#pPremises').addEventListener('click', async e => {
   const btn = e.target.closest('.use-btn');
   if (btn){
-    setArchived(btn.dataset.kw, btn.dataset.premise, true);
+    btn.disabled = true;
+    const ok = await setArchived(btn.dataset.kw, btn.dataset.premise, true);
+    btn.disabled = false;
+    if (!ok) return;
     const k = DATA.keywords.find(x => x.keyword === btn.dataset.kw);
     if (k && hasUnused(k)) openPanel(k);
-    else { $('#panel').dataset.open = 'false'; state.selected = null; applyHighlight(); }
+    else { state.selected = null; applyHighlight(); switchTab('browse'); openMiniPopup('archive'); }
     render();
     return;
   }
@@ -374,7 +644,7 @@ function renderArchive(){
     <div class="pgroup">
       <div class="arch-kw">${esc(r.kw)}</div>
       <div class="pgroup-head">
-        <div><span class="pgroup-text">${esc(r.premise.premise)}</span><br><span class="pgroup-meta">${r.premise.count} video${r.premise.count===1?'':'s'} · median ${r.premise.median_outlier}x</span></div>
+        <div><span class="pgroup-text">${esc(r.premise.premise)}</span><br><span class="pgroup-meta">${r.premise.count} video${r.premise.count===1?'':'s'} · median ${r.premise.median_outlier}x${archivedBy.has(archKey(r.kw, r.premise.premise)) ? ' · used by ' + esc(archivedBy.get(archKey(r.kw, r.premise.premise))) : ''}</span></div>
         <button class="restore-btn" data-kw="${esc(r.kw)}" data-premise="${esc(r.premise.premise)}">Restore</button>
       </div>
       ${r.premise.videos.slice(0, 2).map(videoRow).join('')}
@@ -400,14 +670,132 @@ function renderSettings(){
       <div class="stat">${c.outliers} outliers<br>${c.long_form} long-form / ${c.uploads_scanned} scanned</div>
     </div>`).join('') || '<div class="archive-empty">No channel data.</div>';
 }
-$('#settingsOpen').onclick = () => { renderSettings(); $('#settingsPanel').dataset.open = 'true'; $('#panel').dataset.open = 'false'; $('#archivePanel').dataset.open = 'false'; };
-$('#settingsClose').onclick = () => { $('#settingsPanel').dataset.open = 'false'; };
+let browseState = { q: '', sort: 'score', dbOnly: true };
+const browseSelected = new Set();
+function getBrowseList(){
+  let list = DATA.keywords.filter(k => !browseState.dbOnly || k.data_backed);
+  if (browseState.q) list = list.filter(k => k.keyword.includes(browseState.q));
+  const sorters = {
+    score: (a,b) => b.score - a.score,
+    count: (a,b) => b.count - a.count,
+    outlier: (a,b) => b.median_outlier - a.median_outlier,
+    az: (a,b) => a.keyword.localeCompare(b.keyword),
+  };
+  return [...list].sort(sorters[browseState.sort]);
+}
+const TREND_ICON = { rising: '↑', cooling: '↓', steady: '→', new: '✦' };
+const GRADE_COLOR = { A: '#199e70', B: '#3987e5', C: '#c98500', D: '#d95926', F: 'var(--muted)' };
+function gradeBadge(grade){
+  return `<span class="grade" style="color:${GRADE_COLOR[grade] || 'var(--muted)'};border-color:${GRADE_COLOR[grade] || 'var(--line)'}">${grade}</span>`;
+}
+function trendBadge(trend){
+  return `<span class="trend trend-${trend}" title="${trend}">${TREND_ICON[trend] || ''}</span>`;
+}
 
-$('#archiveOpen').onclick = () => { renderArchive(); $('#archivePanel').dataset.open = 'true'; $('#panel').dataset.open = 'false'; $('#settingsPanel').dataset.open = 'false'; };
-$('#archiveClose').onclick = () => { $('#archivePanel').dataset.open = 'false'; };
-$('#archiveList').addEventListener('click', e => {
+function renderBrowse(){
+  const list = getBrowseList();
+  $('#browseCount').textContent = `${list.length} word${list.length===1?'':'s'} (${browseSelected.size} selected)`;
+  $('#browseSelectAll').checked = list.length > 0 && list.every(k => browseSelected.has(k.keyword));
+  $('#browseList').innerHTML = list.map(k => `
+    <div class="browse-row" data-kw="${esc(k.keyword)}">
+      <input type="checkbox" class="browse-check" data-kw="${esc(k.keyword)}" ${browseSelected.has(k.keyword) ? 'checked' : ''}>
+      <span class="dot" style="background:${slotColor(k.slot, k.median_outlier)}"></span>
+      ${gradeBadge(k.grade)}${trendBadge(k.trend)}
+      <span class="kw">${esc(k.keyword)}</span>
+      <span class="meta">${k.slot_name} · ${k.count} vids · ${k.channels} chans · ${k.median_outlier}x</span>
+    </div>`).join('') || '<div class="archive-empty">No words match.</div>';
+}
+$('#browseSearch').addEventListener('input', e => { browseState.q = e.target.value.trim().toLowerCase(); renderBrowse(); });
+$('#browseSort').addEventListener('change', e => { browseState.sort = e.target.value; renderBrowse(); });
+$('#browseDbOnly').addEventListener('change', e => { browseState.dbOnly = e.target.checked; renderBrowse(); });
+$('#browseSelectAll').addEventListener('change', e => {
+  const list = getBrowseList();
+  if (e.target.checked) list.forEach(k => browseSelected.add(k.keyword));
+  else list.forEach(k => browseSelected.delete(k.keyword));
+  renderBrowse();
+});
+
+function csvCell(v){ return `"${String(v ?? '').replace(/"/g, '""')}"`; }
+function exportBrowseCSV(){
+  const list = getBrowseList().filter(k => browseSelected.has(k.keyword));
+  if (!list.length){ alert('Select at least one keyword first (checkbox next to each row, or "select all").'); return; }
+  const headers = ['grade', 'trend', 'slot', 'keyword', 'keyword_outlier', 'keyword_video_count', 'keyword_channel_count',
+                    'video_title', 'channel', 'views', 'video_outlier', 'video_url', 'thumbnail'];
+  const lines = [headers.join(',')];
+  list.forEach(k => {
+    k.premises.forEach(p => {
+      p.videos.forEach(v => {
+        lines.push([k.grade, k.trend, k.slot_name, k.keyword, k.median_outlier, k.count, k.channels,
+                    v.title, v.channel, v.views, v.outlier, v.url, v.thumb].map(csvCell).join(','));
+      });
+    });
+  });
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `data_backed_export_${Date.now()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+$('#exportCsv').onclick = exportBrowseCSV;
+
+function renderFrameworks(){
+  const list = [...DATA.edges].sort((a,b) => b.lift - a.lift).slice(0, 80);
+  $('#frameworksList').innerHTML = list.map(e => `
+    <div class="pgroup">
+      <div class="pgroup-head">
+        <div><button class="pgroup-text" style="background:none;border:0;cursor:pointer;color:var(--ink);padding:0;text-align:left" data-kw="${esc(e.a)}">${esc(e.a)} + ${esc(e.b)}</button><br><span class="pgroup-meta">${e.lift}x lift · ${e.w} shared example${e.w===1?'':'s'}</span></div>
+      </div>
+      ${e.example ? videoRow(e.example) : ''}
+    </div>`).join('') || '<div class="archive-empty">No pairings yet.</div>';
+}
+$('#frameworksList').addEventListener('click', e => {
+  const img = e.target.closest('img[data-full]');
+  if (img) { openLightbox(img.dataset.full); return; }
+  const btn = e.target.closest('[data-kw]');
+  if (btn){
+    const kw = DATA.keywords.find(k => k.keyword === btn.dataset.kw);
+    if (kw) select({ ...kw, id: kw.keyword });
+  }
+});
+$('#browseList').addEventListener('click', e => {
+  if (e.target.closest('.browse-check')) return;
+  const row = e.target.closest('.browse-row'); if (!row) return;
+  const kw = DATA.keywords.find(k => k.keyword === row.dataset.kw);
+  if (kw) select({ ...kw, id: kw.keyword });
+});
+$('#browseList').addEventListener('change', e => {
+  const cb = e.target.closest('.browse-check'); if (!cb) return;
+  if (cb.checked) browseSelected.add(cb.dataset.kw); else browseSelected.delete(cb.dataset.kw);
+  $('#browseCount').textContent = `${getBrowseList().length} word${getBrowseList().length===1?'':'s'} (${browseSelected.size} selected)`;
+  $('#browseSelectAll').checked = getBrowseList().length > 0 && getBrowseList().every(k => browseSelected.has(k.keyword));
+});
+
+$('#surpriseMe').onclick = () => {
+  const pool = DATA.keywords.filter(k => k.data_backed && unusedPremises(k).length > 0);
+  if (!pool.length) return;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  select({ ...pick, id: pick.keyword });
+  const premises = unusedPremises(pick);
+  const premise = premises[Math.floor(Math.random() * premises.length)];
+  const target = [...document.querySelectorAll('.pgroup')].find(g => g.dataset.premise === premise.premise);
+  if (target){
+    target.style.outline = '2px solid var(--gold)';
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { target.style.outline = ''; }, 2200);
+  }
+};
+
+$('#archiveList').addEventListener('click', async e => {
   const btn = e.target.closest('.restore-btn');
-  if (btn){ setArchived(btn.dataset.kw, btn.dataset.premise, false); renderArchive(); render(); return; }
+  if (btn){
+    btn.disabled = true;
+    const ok = await setArchived(btn.dataset.kw, btn.dataset.premise, false);
+    btn.disabled = false;
+    if (!ok) return;
+    renderArchive(); render();
+    return;
+  }
   const img = e.target.closest('img[data-full]');
   if (img) openLightbox(img.dataset.full);
 });
@@ -433,23 +821,118 @@ $('#lbCopy').onclick = async () => {
   }
 };
 
-$('#fDb').onclick = () => { state.dbOnly = true; $('#fDb').ariaPressed = true; $('#fAll').ariaPressed = false; render(); };
-$('#fAll').onclick = () => { state.dbOnly = false; $('#fAll').ariaPressed = true; $('#fDb').ariaPressed = false; render(); };
+function setMode(mode){
+  state.dbOnly = mode === 'db';
+  state.fallback = mode === 'fallback';
+  $('#fDb').setAttribute('aria-pressed', mode === 'db');
+  $('#fAll').setAttribute('aria-pressed', mode === 'all');
+  $('#fFallback').setAttribute('aria-pressed', mode === 'fallback');
+  $('#q').placeholder = mode === 'fallback' ? 'Type anything and press Enter...' : 'Search a word...';
+  if (mode !== 'fallback') render();
+  const q = $('#q').value.trim().toLowerCase();
+  if (mode === 'fallback' && q) smartFallbackSearch(q);
+}
+
+function smartFallbackSearch(q){
+  // "Search anything" still prefers a real, cross-channel data-backed keyword when
+  // one exists (searches all keywords, not just whatever's currently filtered) -
+  // only drops to a raw title search across the full corpus if nothing curated matches.
+  const kwHit = DATA.keywords.find(k => k.keyword.includes(q));
+  if (kwHit) { select({ ...kwHit, id: kwHit.keyword }); return; }
+  runFallbackSearch(q);
+}
+$('#fDb').onclick = () => setMode('db');
+$('#fAll').onclick = () => setMode('all');
+$('#fFallback').onclick = () => setMode('fallback');
+
+function runFallbackSearch(q){
+  const hits = (DATA.all_videos || []).filter(v => v.title.toLowerCase().includes(q));
+  state.selected = null; applyHighlight();
+  $('#pKeyword').textContent = `"${q}"`;
+  $('#pStats').textContent = hits.length
+    ? `${hits.length} video${hits.length===1?'':'s'} found across the full pulled corpus — not yet a curated topic, but here's what's actually in the data.`
+    : `No videos containing "${q}" in the ${(DATA.all_videos || []).length.toLocaleString()} videos searched. Doesn't exist in this dataset yet — not fabricating an answer.`;
+  $('#pRelated').innerHTML = '';
+  $('#pRelatedHead').hidden = true;
+  $('#pPremisesHead').textContent = hits.length ? 'All matches (best first)' : 'Matching videos';
+  const best = hits[0];
+  const bestProof = best ? `<div class="best-proof"><div class="best-proof-label">Best match</div>${videoRow(best)}</div>` : '';
+  $('#pPremises').innerHTML = bestProof + hits.slice(1, 40).map(videoRow).join('');
+  switchTab('word');
+}
 
 $('#q').addEventListener('input', e => {
   const q = e.target.value.trim().toLowerCase();
+  if (state.fallback) return;
   if (!q) { nodeSel && nodeSel.classed('dim', false); return; }
   nodeSel && nodeSel.classed('dim', d => !d.keyword.includes(q));
 });
 $('#q').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const q = e.target.value.trim().toLowerCase();
+  if (!q) return;
+  if (state.fallback) { smartFallbackSearch(q); return; }
   const hit = visibleKeywords().find(k => k.keyword.includes(q));
   if (hit) select({ ...hit, id: hit.keyword });
 });
 
-addEventListener('resize', () => { if (simulation) simulation.force('center', d3.forceCenter(innerWidth/2, innerHeight/2)).alpha(.3).restart(); });
+function graphCenterX(){
+  const collapsed = $('#sidebar').dataset.collapsed === 'true';
+  return (innerWidth - (collapsed ? 0 : 380)) / 2;
+}
+addEventListener('resize', () => {
+  syncHeaderHeight();
+  if (simulation) simulation.force('center', d3.forceCenter(graphCenterX(), innerHeight/2)).alpha(.3).restart();
+});
+$('#fitView').onclick = fitToScreen;
 
-render();
+function archiveSnapshot(){ return [...archive].sort().join(','); }
+function onArchiveMaybeChanged(prevSnapshot){
+  const next = archiveSnapshot();
+  if (next === prevSnapshot) return next;
+  render();
+  if (!$('#miniArchivePopup').hidden) renderArchive();
+  return next;
+}
+
+// Instant sync via Supabase Realtime (websocket push) when available; a slower
+// polling fallback still runs underneath in case a realtime event gets dropped
+// (dropped connection, tab was backgrounded, etc.) - belt and suspenders, not
+// a replacement for each other.
+function applyRealtimeChange(payload){
+  const row = (payload.new && Object.keys(payload.new).length) ? payload.new : payload.old;
+  if (!row || !row.key) return;
+  if (payload.eventType === 'DELETE') { archive.delete(row.key); archivedBy.delete(row.key); }
+  else { archive.add(row.key); if (row.archived_by) archivedBy.set(row.key, row.archived_by); }
+  $('#archiveCount').textContent = archive.size;
+  render();
+  if (!$('#miniArchivePopup').hidden) renderArchive();
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(e => console.error('Service worker registration failed', e));
+}
+
+fetchLiveLibraryData();
+
+fetchArchive().then(() => {
+  render();
+  renderBrowse();
+  let lastSnapshot = archiveSnapshot();
+
+  if (sbClient) {
+    sbClient.channel('archive-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'archived_premises' }, p => {
+        applyRealtimeChange(p);
+        lastSnapshot = archiveSnapshot();
+      })
+      .subscribe(status => console.log('Archive realtime sync:', status));
+  }
+
+  setInterval(async () => {
+    await fetchArchive();
+    lastSnapshot = onArchiveMaybeChanged(lastSnapshot);
+  }, sbClient ? 90000 : 15000);
+});
 </script>
 </body></html>
