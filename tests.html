@@ -1,0 +1,763 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<title>Data Thumbnail Holding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: contact-sheet tool. Graphite neutrals, every winner circled in grease-pencil red. */
+:root{
+  --bg:#eceef1; --surface:#ffffff; --surface-2:#e2e5ea; --ink:#14171c; --ink-2:#5a616c;
+  --line:#d2d7de; --mark:#d92e1c; --mark-ink:#ffffff; --mark-soft:#d92e1c1f; --bar:#8a929e;
+  --f-display:"Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --f-body:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101216; --surface:#191c22; --surface-2:#232730; --ink:#eceef2; --ink-2:#9aa1ad;
+  --line:#2c313b; --mark:#ff5a43; --mark-ink:#140806; --mark-soft:#ff5a4326; --bar:#69717e; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#101216; --surface:#191c22; --surface-2:#232730; --ink:#eceef2; --ink-2:#9aa1ad;
+  --line:#2c313b; --mark:#ff5a43; --mark-ink:#140806; --mark-soft:#ff5a4326; --bar:#69717e; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.label{font:500 11px/1.2 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-in{max-width:1240px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px}
+.brand{font:800 20px/1 var(--f-display);letter-spacing:-.01em;display:flex;align-items:center;gap:10px;cursor:pointer;background:none;border:0;padding:0}
+.brand i{width:22px;height:14px;border:2px solid var(--mark);border-radius:50%;transform:rotate(-8deg);display:inline-block}
+.nav{display:flex;gap:4px}
+.nav button{background:none;border:0;padding:6px 10px;border-radius:var(--r);color:var(--ink-2);cursor:pointer;font-weight:500}
+.nav button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink)}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:var(--r);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.danger{color:var(--mark)}
+.btn.danger.armed{background:var(--mark);color:var(--mark-ink);border-color:var(--mark)}
+.btn.small{padding:4px 9px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink-2);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+main{max-width:1240px;margin:0 auto;padding-block:20px 60px;padding-inline:16px}
+.notice{border:1px dashed var(--line);border-radius:var(--r);padding:10px 14px;color:var(--ink-2);margin-bottom:16px;font-size:14px}
+.notice.err{border-color:var(--mark);color:var(--mark)}
+
+/* library */
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;align-items:center}
+.field{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:7px 10px;min-width:0}
+.filters .field{flex:1 1 220px;max-width:360px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.card{background:none;border:0;padding:0;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card h3{margin:0;font:600 15px/1.3 var(--f-body);text-wrap:balance}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)}
+.card:hover .thumb{outline:2px solid var(--ink-2);outline-offset:2px}
+.thumb{aspect-ratio:16/9;width:100%;max-width:100%;border-radius:var(--r);background:var(--surface-2);overflow:hidden;position:relative;display:grid;place-items:center;color:var(--ink-2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .ph{font:500 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase}
+.chip{display:inline-block;font:500 12px/1 var(--f-mono);padding:4px 7px;border-radius:99px;background:var(--surface-2);color:var(--ink);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.chip.mark{background:var(--mark-soft);color:var(--mark)}
+.empty{text-align:center;padding:60px 16px;color:var(--ink-2);border:1px dashed var(--line);border-radius:var(--r)}
+.empty h2{font:800 26px/1.15 var(--f-display);color:var(--ink);margin:0 0 6px;text-wrap:balance}
+
+/* video page */
+.back{margin-bottom:14px}
+.vhead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,260px);gap:28px;align-items:start;margin-bottom:28px}
+.vtitle{width:100%;font:800 clamp(24px,3.4vw,36px)/1.1 var(--f-display);letter-spacing:-.015em;background:none;border:1px solid transparent;border-radius:var(--r);padding:2px 4px;margin-left:-5px}
+.vtitle:hover,.vtitle:focus{border-color:var(--line);background:var(--surface)}
+.vfields{display:grid;gap:10px;margin-top:12px}
+.vfields label{display:grid;gap:4px}
+textarea.field{resize:vertical;min-height:64px;width:100%}
+input.field{width:100%}
+.final{display:grid;gap:8px;align-content:start}
+.hint{font-size:13px;color:var(--ink-2)}
+.thumb.contain img{object-fit:contain}
+.thumb .keytag{left:auto;right:6px}
+.small-link{font-size:13px;justify-self:start}
+.uploading{text-decoration:none;color:var(--mark)}
+.variants.mini .var{gap:6px}
+.chip.on{background:var(--mark-soft);color:var(--mark)}
+.gapbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 18px}
+.gapbar .label{margin-right:4px}
+.fchip{border:1px solid transparent;cursor:pointer;padding:6px 10px}
+.fchip .mono{color:var(--ink-2);margin-left:3px}
+.fchip[aria-pressed="true"]{background:var(--mark);color:var(--mark-ink)}
+.fchip[aria-pressed="true"] .mono{color:inherit}
+.gp{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.gchip{display:inline-flex;align-items:center;gap:4px;background:var(--mark-soft);color:var(--mark)}
+.chipx{background:none;border:0;padding:0 0 0 2px;cursor:pointer;color:inherit;font-size:14px;line-height:1}
+.addgap{cursor:pointer;border:1px dashed var(--line);background:none;color:var(--ink-2)}
+.addgap:hover{border-color:var(--mark);color:var(--mark)}
+.gp-panel{flex-basis:100%;display:flex;flex-wrap:wrap;gap:5px;padding:8px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.gp-panel .pick{cursor:pointer;border:0}
+.gp-panel .pick:hover{background:var(--mark-soft);color:var(--mark)}
+.gp-panel input{flex:1 1 140px;padding:5px 8px;font-size:13px}
+.vmain{display:grid;gap:12px;justify-items:start;min-width:0}
+.vmain .vtitle{justify-self:stretch}
+.vmeta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--ink-2)}
+.vmeta a{color:var(--ink)}
+.vmore{justify-self:stretch}
+.vmore summary{cursor:pointer;color:var(--ink-2);font-size:14px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shot.big{min-height:150px}
+.variants.mini{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.variants.mini .droptext small{display:none}
+.modal .shots{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.modal .shots .shot.big:only-child{grid-column:1/-1}
+.thumb .tag{position:absolute;left:6px;top:6px;z-index:1}
+.final .tag{position:absolute;left:8px;top:8px}
+
+.tests{display:grid;gap:22px}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:16px;min-width:0}
+.test-h{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.test-n{font:800 22px/1 var(--f-display)}
+.gapin{display:flex;align-items:center;gap:8px;flex:1 1 260px;min-width:0}
+.gapin input{flex:1;min-width:0}
+.dates{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dates input{width:auto;padding:5px 8px;font-size:13px}
+.variants{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.var{display:grid;gap:8px;align-content:start;min-width:0}
+.var-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.key{font:800 16px/1 var(--f-display);width:26px;height:26px;display:grid;place-items:center;border-radius:50%;border:1.5px solid var(--line)}
+.var.win .key{border-color:var(--mark);color:var(--mark)}
+.var.win .thumb{outline:3px solid var(--mark);outline-offset:3px}
+.winbtn{font:500 12px var(--f-mono);letter-spacing:.04em;text-transform:uppercase;background:none;border:1px solid var(--line);border-radius:99px;padding:4px 9px;cursor:pointer;color:var(--ink-2)}
+.var.win .winbtn{background:var(--mark);border-color:var(--mark);color:var(--mark-ink)}
+.share{display:flex;align-items:center;gap:8px}
+.share input{width:74px;padding:5px 8px}
+.sharebar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.sharebar span{display:block;height:100%;background:var(--bar)}
+.var.win .sharebar span{background:var(--mark)}
+
+.drop{cursor:pointer;border:1.5px dashed var(--line)}
+.drop:hover,.drop:focus-visible,.drop.over{border-color:var(--mark);color:var(--mark)}
+.thumb.has{border:0}
+.thumb .x{position:absolute;right:6px;top:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;width:26px;height:26px;cursor:pointer;display:grid;place-items:center;font-size:14px;line-height:1;opacity:0;transition:opacity .15s}
+.thumb:hover .x,.thumb .x:focus-visible{opacity:1}
+.busy::after{content:"Uploading…";position:absolute;inset:0;display:grid;place-items:center;background:var(--surface);opacity:.9;font:500 12px var(--f-mono);color:var(--ink)}
+.droptext{display:grid;gap:2px;text-align:center;padding:8px;font-size:13px}
+.droptext small{font:400 11px var(--f-mono);color:var(--ink-2)}
+
+.results{display:grid;gap:8px}
+.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.shot{position:relative;border-radius:var(--r);overflow:hidden;background:var(--surface-2);border:1px solid var(--line);min-height:90px;display:grid;place-items:center}
+.shot img{width:100%;display:block;cursor:zoom-in}
+.shot .x{position:absolute;right:6px;top:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;width:26px;height:26px;cursor:pointer;opacity:0}
+.shot:hover .x,.shot .x:focus-visible{opacity:1}
+.shot.drop{color:var(--ink-2)}
+.test-f{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;font-size:13px;color:var(--ink-2)}
+.addtest{justify-self:start}
+
+/* gaps */
+.gaps{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:28px;align-items:start}
+.gaplist{display:grid;gap:2px;position:sticky;top:80px}
+.gaprow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;background:none;border:0;padding:9px 10px;border-radius:var(--r);cursor:pointer}
+.gaprow[aria-pressed="true"]{background:var(--surface)}
+.gaprow:hover{background:var(--surface)}
+.gaprow b{font-weight:600;overflow-wrap:anywhere}
+.gaprow span{font:400 12px var(--f-mono);color:var(--ink-2)}
+.gaphead{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px;margin-bottom:16px}
+.gaphead h2{margin:0;font:800 28px/1.1 var(--f-display);text-wrap:balance}
+.stat{display:grid;gap:2px}
+.stat b{font:500 20px/1 var(--f-mono)}
+.gtests{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
+
+h2.sec{font:800 20px/1.2 var(--f-display);margin:0 0 12px}
+
+/* modal + lightbox */
+.scrim{position:fixed;inset:0;background:#0009;z-index:50;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);color:var(--ink);border-radius:12px;padding:20px;width:min(600px,100%);display:grid;gap:14px;max-height:100%;overflow:auto}
+.modal h2{margin:0;font:800 24px/1.1 var(--f-display)}
+.modal label{display:grid;gap:4px}
+.row{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.lb img{max-width:100%;max-height:calc(100vh - 80px);border-radius:var(--r);display:block}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:var(--r);z-index:60;font-size:14px;max-width:calc(100% - 32px)}
+
+@media (max-width:820px){
+  .vhead{grid-template-columns:1fr}
+  .gaps{grid-template-columns:1fr}
+  .gaplist{position:static}
+}
+@media (max-width:620px){ .variants:not(.mini){grid-template-columns:1fr} .pair{grid-template-columns:1fr} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+
+</head><body>
+<header class="top"><div class="top-in">
+  <button class="brand" id="brand" type="button"><i aria-hidden="true"></i>Data Thumbnail Holding</button>
+  <nav class="nav" aria-label="Views">
+    <button type="button" data-nav="library" id="navLibrary">Videos</button>
+    <button type="button" data-nav="gaps" id="navGaps">Gaps</button>
+  </nav>
+  <span class="spacer"></span>
+  <button class="btn primary" type="button" id="newVideo">+ Log a test</button>
+</div></header>
+<main id="app"></main>
+<div id="layer"></div>
+<input type="file" id="filepick" accept="image/png,image/jpeg,image/webp,image/gif" hidden multiple>
+<datalist id="gapOptions"></datalist>
+
+<script>
+const VARIANT_KEYS = ['A','B','C'];
+const app = document.getElementById('app');
+const layer = document.getElementById('layer');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const src = id => 'https://gjksyrsfmszhewtwtdej.supabase.co/storage/v1/object/public/thumb-shots/' + id;
+const fmtDate = ms => ms ? new Date(ms).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : '';
+
+let db = null, assets = null, user = null, me = null, canWrite = true;
+const S = {
+  videos: new Map(), tests: new Map(), ready: { v:false, t:false },
+  view: 'library', vid: null, gap: null, q: '', gapSel: new Set(), picker: null,
+  names: {}, busy: new Set(), error: '', standalone: false, pendingRender: false,
+};
+
+/* ---------- derived data ---------- */
+const testsFor = vid => [...S.tests.values()].filter(t => t.videoId === vid).sort((a,b) => a.number - b.number);
+const winnerVariant = t => (t.variants || []).find(v => v.key === t.winner) || null;
+function coverFor(v){
+  if (v.winnerThumb) return { id: v.winnerThumb, from: null };
+  const ts = testsFor(v.id).reverse();
+  for (const t of ts){ const w = winnerVariant(t); if (w && w.thumb) return { id: w.thumb, from: t.number }; }
+  for (const t of ts){ const any = (t.variants||[]).find(x => x.thumb); if (any) return { id: any.thumb, from: null }; }
+  for (const t of ts){ if ((t.results||[]).length) return { id: t.results[0], from: null, shot: true }; }
+  return null;
+}
+const vGaps = v => Array.isArray(v && v.gaps) ? v.gaps : [];
+const testGaps = t => [...new Set((t.variants||[]).flatMap(vGaps))];
+const hasGap = (list, g) => list.some(x => x.toLowerCase() === g.toLowerCase());
+function allGaps(){
+  const m = new Map();
+  for (const t of S.tests.values()) for (const v of (t.variants||[])) for (const name of vGaps(v)){
+    const k = name.toLowerCase();
+    if (!m.has(k)) m.set(k, { name, entries: [], tests: new Set(), wins: 0, decided: 0, shares: [] });
+    const g = m.get(k);
+    g.entries.push({ t, v }); g.tests.add(t.id);
+    if (t.winner){ g.decided++; if (t.winner === v.key) g.wins++; }
+    if (v.share != null && v.share !== '') g.shares.push(+v.share);
+  }
+  return [...m.values()].sort((a,b) => b.entries.length - a.entries.length || a.name.localeCompare(b.name));
+}
+function knownGaps(){
+  const names = allGaps().map(g => g.name);
+  if (draft) for (const list of Object.values(draft.gaps)) for (const n of list) if (!hasGap(names, n)) names.push(n);
+  return names;
+}
+const canonGap = name => knownGaps().find(n => n.toLowerCase() === name.toLowerCase()) || name;
+
+function gapPicker(pkey, gaps, editable){
+  const chips = gaps.map(g => `<span class="chip gchip${hasGap([...S.gapSel], g) ? ' on' : ''}">${esc(g)}${editable ? `<button type="button" class="chipx" data-gtoggle="${esc(g)}" data-pkey="${pkey}" aria-label="Remove ${esc(g)}">×</button>` : ''}</span>`).join('');
+  if (!editable) return `<div class="gp">${chips || '<span class="hint">No gap tagged</span>'}</div>`;
+  const open = S.picker === pkey;
+  const panel = open ? `<div class="gp-panel">
+      ${knownGaps().filter(n => !hasGap(gaps, n)).map(n => `<button type="button" class="chip pick" data-gtoggle="${esc(n)}" data-pkey="${pkey}">+ ${esc(n)}</button>`).join('')}
+      <input class="field" id="gpnew-${pkey}" data-gnew="${pkey}" placeholder="New gap, then Enter" aria-label="New gap name"></div>` : '';
+  if (gaps.length) return `<div class="gp">${chips}</div>`;
+  return `<div class="gp"><button type="button" class="chip addgap" data-gopen="${pkey}" aria-expanded="${open}">${open ? 'Cancel' : '+ Tag the gap'}</button>${panel}</div>`;
+}
+function getGaps(pkey){
+  const [a, key] = pkey.split(':');
+  if (a === 'draft') return draft ? (draft.gaps[key] || []) : [];
+  const t = S.tests.get(a); return vGaps(((t && t.variants) || []).find(v => v.key === key));
+}
+async function setGaps(pkey, gaps){
+  const [a, key] = pkey.split(':');
+  if (a === 'draft'){ if (draft){ draft.gaps[key] = gaps; renderModal(); } return; }
+  const t = S.tests.get(a); if (!t) return;
+  const vars = VARIANT_KEYS.map(k => ({ key:k, ...((t.variants||[]).find(v => v.key === k) || {}) }));
+  vars.find(v => v.key === key).gaps = gaps;
+  S.tests.set(t.id, { ...t, variants: vars }); render(true);
+  try { await db.doc('tests/' + t.id).update({ variants: vars }); touchVideo(t.videoId); }
+  catch (e) { fail(e, 'tag that gap'); }
+}
+function toggleGap(pkey, name){
+  const cur = getGaps(pkey);
+  const next = hasGap(cur, name) ? [] : [canonGap(name)];
+  S.picker = null; setGaps(pkey, next);
+}
+
+/* ---------- render ---------- */
+function render(force){
+  const ae = document.activeElement;
+  if (!force && ae && app.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { S.pendingRender = true; return; }
+  S.pendingRender = false;
+  document.getElementById('navLibrary').setAttribute('aria-pressed', S.view !== 'gaps');
+  document.getElementById('navGaps').setAttribute('aria-pressed', S.view === 'gaps');
+  document.getElementById('newVideo').hidden = !canWrite || S.standalone;
+  document.getElementById('gapOptions').innerHTML = allGaps().map(g => `<option value="${esc(g.name)}">`).join('');
+  let html = '';
+  if (S.error) html += `<div class="notice err">${esc(S.error)}</div>`;
+  if (S.standalone) html += `<div class="notice">Could not reach the database. Check your connection and reload.</div>`;
+  else if (!assets && db && canWrite) html += `<div class="notice">You can view and edit text here, but uploading screenshots needs Editor access. Ask the owner to share it with you as an Editor.</div>`;
+  if (S.view === 'video' && S.videos.has(S.vid)) html += renderVideo(S.videos.get(S.vid));
+  else if (S.view === 'gaps') html += renderGaps();
+  else html += renderLibrary();
+  app.innerHTML = html;
+  resolveNames();
+}
+
+function thumbBox(id, opts = {}){
+  // opts: drop (data attrs string) | removable attrs
+  const busy = opts.busyKey && S.busy.has(opts.busyKey) ? ' busy' : '';
+  if (id) return `<div class="thumb has${busy}${opts.contain ? ' contain' : ''}">${opts.tag || ''}<img src="${src(id)}" alt="${esc(opts.alt || 'Thumbnail')}" loading="lazy" data-zoom="${id}">${opts.remove && assets && canWrite ? `<button class="x" type="button" title="Remove image" ${opts.remove}>×</button>` : ''}</div>`;
+  if (opts.drop && assets && canWrite) return `<div class="thumb drop${busy}" tabindex="0" role="button" ${opts.drop}><div class="droptext">${esc(opts.label || 'Add thumbnail')}<small>click, drop, or paste</small></div></div>`;
+  return `<div class="thumb"><span class="ph">${esc(opts.empty || 'No image')}</span></div>`;
+}
+
+function renderLibrary(){
+  if (!S.ready.v && !S.standalone) return `<div class="empty"><p class="label">Loading videos…</p></div>`;
+  const q = S.q.toLowerCase(), sel = [...S.gapSel];
+  let vids = [...S.videos.values()].sort((a,b) => (b.updatedAt||b.createdAt||0) - (a.updatedAt||a.createdAt||0));
+  const gaps = allGaps();
+  const filters = `<div class="filters">
+    <input class="field" id="search" type="search" placeholder="Search titles" value="${esc(S.q)}" aria-label="Search titles">
+    <span class="label">${vids.length} video${vids.length===1?'':'s'} · ${S.tests.size} test${S.tests.size===1?'':'s'}</span>
+  </div>
+  ${gaps.length ? `<div class="gapbar"><span class="label">Filter by gap</span>
+    ${gaps.map(g => `<button type="button" class="chip fchip" data-gfilter="${esc(g.name)}" aria-pressed="${hasGap(sel, g.name)}">${esc(g.name)} <span class="mono">${g.tests.size}</span></button>`).join('')}
+    ${sel.length ? `<button type="button" class="linkbtn" data-gfilter="">Clear</button>` : ''}</div>` : ''}`;
+  if (!vids.length) return `<div class="empty"><h2>No videos yet</h2><p>Each time a YouTube Test &amp; Compare finishes, screenshot the results and log it here. Every run is saved under its video as Test 1, Test 2, Test 3, so old results are never lost.</p>${canWrite && !S.standalone ? '<button class="btn primary" type="button" data-act="new-video">+ Log your first test</button>' : ''}</div>`;
+  vids = vids.filter(v => (!q || (v.title||'').toLowerCase().includes(q)) && (!sel.length || testsFor(v.id).some(t => testGaps(t).some(g => hasGap(sel, g)))));
+  const cards = vids.map(v => {
+    const ts = testsFor(v.id), c = coverFor(v);
+    const g = [...new Set(ts.flatMap(testGaps))].sort((a,b) => hasGap(sel,b) - hasGap(sel,a));
+    return `<button class="card" type="button" data-open="${v.id}">
+      ${thumbBox(c && c.id, { empty: 'No thumbnail yet', alt: v.title, contain: c && c.shot })}
+      <h3>${esc(v.title || 'Untitled video')}</h3>
+      <div class="meta"><span class="mono">${ts.length} test${ts.length===1?'':'s'}</span>${g.slice(0,3).map(x => `<span class="chip${hasGap(sel,x)?' on':''}">${esc(x)}</span>`).join('')}${g.length>3?`<span class="mono">+${g.length-3}</span>`:''}</div>
+    </button>`;
+  }).join('');
+  return filters + (vids.length ? `<div class="grid">${cards}</div>` : `<div class="empty"><p>No videos match.</p></div>`);
+}
+
+function renderVideo(v){
+  const ts = testsFor(v.id), c = coverFor(v), ro = !canWrite ? 'readonly' : '';
+  const next = ts.length ? Math.max(...ts.map(t => t.number)) + 1 : 1;
+  const canUp = assets && canWrite;
+  let final;
+  if (v.winnerThumb) final = thumbBox(v.winnerThumb, { alt:'Final thumbnail', remove:`data-clear="winner" data-vid="${v.id}"`, busyKey:'winner:'+v.id })
+    + `<span class="hint">Uploaded as the final thumbnail</span>`;
+  else if (c && c.from) final = thumbBox(c.id, { alt:'Final thumbnail', busyKey:'winner:'+v.id })
+    + `<span class="hint">From the Test ${c.from} winner${canUp ? ` · <button class="linkbtn" type="button" data-drop="winner" data-vid="${v.id}">upload a different one</button>` : ''}</span>`;
+  else final = `<div class="thumb"><span class="ph">No winner yet</span></div><span class="hint">Mark a winner on a test and it shows up here.</span>`;
+  const head = `<button class="linkbtn back" type="button" data-nav="library">← All videos</button>
+  <div class="vhead">
+    <div class="vmain">
+      <input class="vtitle" id="v-title" data-vfield="title" value="${esc(v.title)}" placeholder="Video title" aria-label="Video title" ${ro}>
+      <div class="vmeta"><span class="mono">${ts.length} test${ts.length===1?'':'s'}</span>
+        ${v.url && /^https?:\/\//.test(v.url) ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">Watch on YouTube ↗</a>` : ''}
+        <span>Added ${fmtDate(v.createdAt)}${v.createdBy ? ` by <span data-name="${esc(v.createdBy)}">${esc(S.names[v.createdBy] || 'a teammate')}</span>` : ''}</span></div>
+      ${canWrite ? `<button class="btn primary" type="button" data-act="add-test" data-vid="${v.id}">+ Log Test ${next}</button>` : ''}
+      <details class="vmore"><summary>Link &amp; notes</summary><div class="vfields">
+        <label><span class="label">YouTube link</span><input class="field" id="v-url" data-vfield="url" value="${esc(v.url)}" placeholder="https://youtube.com/watch?v=…" ${ro}></label>
+        <label><span class="label">Notes</span><textarea class="field" id="v-notes" data-vfield="notes" placeholder="Anything to remember about this video" ${ro}>${esc(v.notes)}</textarea></label>
+        ${canWrite ? `<div><button class="btn danger small" type="button" data-act="del-video" data-vid="${v.id}">Delete this video and all its tests</button></div>` : ''}
+      </div></details>
+    </div>
+    <div class="final"><span class="label">Current winner</span>${final}</div>
+  </div>`;
+  const tests = ts.slice().reverse().map(t => renderTest(t, ro)).join('');
+  return head + `<div class="tests">${tests || `<div class="empty"><p>No tests logged for this video yet.</p>${canWrite ? `<button class="btn primary" type="button" data-act="add-test" data-vid="${v.id}">+ Log Test 1</button>` : ''}</div>`}</div>`;
+}
+
+function renderTest(t, ro){
+  const vars = VARIANT_KEYS.map(k => (t.variants||[]).find(v => v.key === k) || { key:k });
+  const maxShare = Math.max(100, ...vars.map(v => +v.share || 0));
+  const variants = vars.map(v => {
+    const win = t.winner === v.key, bk = `var:${t.id}:${v.key}`;
+    return `<div class="var${win?' win':''}">
+      <div class="var-top"><span class="key">${v.key}</span>
+        ${canWrite ? `<button class="winbtn" type="button" data-act="winner" data-tid="${t.id}" data-key="${v.key}" aria-pressed="${win}">${win ? 'Winner' : 'Mark winner'}</button>` : (win ? '<span class="chip mark">Winner</span>' : '')}</div>
+      ${v.thumb ? thumbBox(v.thumb, { alt:`Thumbnail ${v.key}`, remove:`data-clear="variant" data-tid="${t.id}" data-key="${v.key}"`, busyKey:bk })
+                : assets && canWrite ? `<button class="linkbtn small-link${S.busy.has(bk) ? ' uploading' : ''}" type="button" data-drop="variant" data-tid="${t.id}" data-key="${v.key}">${S.busy.has(bk) ? 'Uploading…' : '+ Add its own image (optional)'}</button>` : ''}
+      ${gapPicker(t.id + ':' + v.key, vGaps(v), canWrite)}
+      <div class="share"><input class="field mono" type="number" min="0" max="100" step="0.1" inputmode="decimal" id="sh-${t.id}-${v.key}" data-tfield="share" data-tid="${t.id}" data-key="${v.key}" value="${v.share ?? ''}" placeholder="—" aria-label="Watch time share for ${v.key}" ${ro}><span class="label">% watch time</span></div>
+      <div class="sharebar" aria-hidden="true"><span style="width:${Math.min(100, (+v.share||0)/maxShare*100)}%"></span></div>
+    </div>`;
+  }).join('');
+  const shots = (t.results||[]).map(id => `<div class="shot"><img src="${src(id)}" alt="Test ${t.number} results" loading="lazy" data-zoom="${id}">${assets && canWrite ? `<button class="x" type="button" title="Remove screenshot" data-clear="result" data-tid="${t.id}" data-id="${id}">×</button>` : ''}</div>`).join('');
+  const addShot = assets && canWrite ? `<div class="shot drop${S.busy.has('res:'+t.id)?' busy':''}" tabindex="0" role="button" data-drop="results" data-tid="${t.id}" style="position:relative"><div class="droptext">Add results screenshot<small>click, drop, or ⌘V</small></div></div>` : '';
+  return `<section class="test" id="test-${t.id}">
+    <div class="test-h">
+      <span class="test-n">Test ${t.number}</span>
+      <span class="spacer"></span>
+      <span class="dates"><span class="label">Ran</span>
+        <input class="field mono" type="date" id="st-${t.id}" data-tfield="startedAt" data-tid="${t.id}" value="${esc(t.startedAt)}" aria-label="Start date" ${ro}>
+        <span class="label">to</span>
+        <input class="field mono" type="date" id="en-${t.id}" data-tfield="endedAt" data-tid="${t.id}" value="${esc(t.endedAt)}" aria-label="End date" ${ro}></span>
+    </div>
+    <div class="results"><span class="label">Results screenshots</span>
+      ${shots || addShot ? `<div class="shots">${shots}${addShot}</div>` : '<p class="label">None uploaded</p>'}</div>
+    <span class="label">Each thumbnail: gap tested, watch share, winner</span>
+    <div class="variants">${variants}</div>
+    <textarea class="field" id="nt-${t.id}" data-tfield="notes" data-tid="${t.id}" placeholder="What did we learn from this test?" ${ro}>${esc(t.notes)}</textarea>
+    <div class="test-f"><span class="mono">Logged ${fmtDate(t.createdAt)}${t.createdBy ? ` by <span data-name="${esc(t.createdBy)}">${esc(S.names[t.createdBy] || 'a teammate')}</span>` : ''}</span>
+      ${canWrite ? `<button class="btn danger small" type="button" data-act="del-test" data-tid="${t.id}">Delete Test ${t.number}</button>` : ''}</div>
+  </section>`;
+}
+
+function renderGaps(){
+  const gaps = allGaps();
+  if (!gaps.length) return `<div class="empty"><h2>No gaps tagged yet</h2><p>Tag the gap each thumbnail tests (under A, B and C on a test). Every thumbnail that tested the same gap gathers here with its win record.</p></div>`;
+  if (!S.gap || !gaps.some(g => g.name.toLowerCase() === S.gap.toLowerCase())) S.gap = gaps[0].name;
+  const sel = gaps.find(g => g.name.toLowerCase() === S.gap.toLowerCase());
+  const rate = g => g.decided ? Math.round(g.wins / g.decided * 100) + '%' : '—';
+  const list = gaps.map(g => `<button class="gaprow" type="button" data-gap="${esc(g.name)}" aria-pressed="${g === sel}"><b>${esc(g.name)}</b><span>${g.wins}/${g.decided} won</span></button>`).join('');
+  const avg = sel.shares.length ? (sel.shares.reduce((a,b)=>a+b,0)/sel.shares.length).toFixed(1) + '%' : '—';
+  const vids = new Set(sel.entries.map(e => e.t.videoId));
+  const cards = sel.entries.slice().sort((a,b) => (b.t.createdAt||0)-(a.t.createdAt||0)).map(({ t, v }) => {
+    const vid = S.videos.get(t.videoId) || {};
+    const res = !t.winner ? '<span class="chip tag">No winner yet</span>' : t.winner === v.key ? '<span class="chip mark tag">Won</span>' : '<span class="chip tag">Lost</span>';
+    return `<button class="card" type="button" data-open="${t.videoId}" data-test="${t.id}">
+      ${thumbBox(v.thumb || (t.results||[])[0], { empty:'No screenshot', alt: vid.title, tag: res + (v.thumb ? '' : `<span class="chip tag keytag">${v.key}</span>`), contain: !v.thumb })}
+      <h3>${esc(vid.title || 'Untitled video')}</h3>
+      <div class="meta"><span class="mono">Test ${t.number} · ${v.key}${v.share != null && v.share !== '' ? ' · ' + esc(v.share) + '%' : ''}</span></div>
+    </button>`;
+  }).join('');
+  return `<div class="gaps"><div class="gaplist"><span class="label" style="padding:0 10px 6px">Gap · record</span>${list}</div>
+    <div><div class="gaphead"><h2>${esc(sel.name)}</h2>
+      <div class="stat"><span class="label">Thumbnails</span><b>${sel.entries.length}</b></div>
+      <div class="stat"><span class="label">Videos</span><b>${vids.size}</b></div>
+      <div class="stat"><span class="label">Win rate</span><b>${rate(sel)}</b></div>
+      <div class="stat"><span class="label">Avg watch share</span><b>${avg}</b></div></div>
+      <div class="gtests">${cards}</div></div></div>`;
+}
+
+async function resolveNames(){
+  if (!user) return;
+  const ids = [...new Set([...S.videos.values(), ...S.tests.values()].map(x => x.createdBy).filter(Boolean))];
+  if (!ids.length) return;
+  const ps = await user.profiles(ids);
+  for (const id of ids) S.names[id] = ps[id] ? (ps[id].isMe ? 'you' : ps[id].name || 'a teammate') : 'a teammate';
+  document.querySelectorAll('[data-name]').forEach(el => { el.textContent = S.names[el.dataset.name] || 'a teammate'; });
+}
+
+/* ---------- writes ---------- */
+function toast(msg){
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2600);
+}
+function fail(e, what){
+  const code = e && e.code;
+  const msg = code === 'too_large' ? 'That image is over 20 MB. Crop or compress it and try again.'
+    : code === 'unsupported_type' ? 'Use a PNG, JPG, WebP, or GIF image.'
+    : code === 'quota_or_state' || code === 'quota_exceeded' ? 'Storage for this page is full. Delete some old screenshots first.'
+    : code === 'rate_limited' || code === 'resource_exhausted' ? 'Too many changes at once. Wait a moment and try again.'
+    : code === 'invalid_argument' || code === 'not_granted' ? 'You have view-only access, so this change was not saved.'
+    : `Could not ${what}. Reload the page and try again.`;
+  toast(msg); console.error(what, e);
+}
+const touchVideo = vid => db.doc('videos/' + vid).update({ updatedAt: Date.now() }).catch(() => {});
+
+async function upload(file){
+  const ok = ['image/png','image/jpeg','image/webp','image/gif'];
+  const type = ok.includes(file.type) ? undefined : (/\.jpe?g$/i.test(file.name||'') ? 'image/jpeg' : /\.webp$/i.test(file.name||'') ? 'image/webp' : 'image/png');
+  try { return (await assets.upload(file, type ? { type } : undefined)).id; }
+  catch (e) { if (e && e.code === 'store_unavailable') { await new Promise(r => setTimeout(r, 800)); return (await assets.upload(file, type ? { type } : undefined)).id; } throw e; }
+}
+
+async function handleFiles(target, files){
+  files = [...files].filter(f => f && f.type !== '' ? f.type.startsWith('image/') : true);
+  if (!files.length || !assets) return;
+  const d = target.dataset;
+  const key = d.drop === 'winner' ? 'winner:' + d.vid : d.drop === 'variant' ? `var:${d.tid}:${d.key}` : d.drop === 'results' ? 'res:' + d.tid : d.drop === 'log-res' ? 'log-res' : 'log-' + d.key;
+  S.busy.add(key); render(); if (draft) renderModal();
+  try {
+    if (d.drop === 'winner'){
+      const id = await upload(files[0]);
+      await db.doc('videos/' + d.vid).update({ winnerThumb: id, updatedAt: Date.now() });
+    } else if (d.drop === 'variant'){
+      const id = await upload(files[0]);
+      const t = S.tests.get(d.tid);
+      const vars = VARIANT_KEYS.map(k => ({ key:k, ...((t.variants||[]).find(v => v.key === k) || {}) }));
+      vars.find(v => v.key === d.key).thumb = id;
+      await db.doc('tests/' + d.tid).update({ variants: vars });
+      touchVideo(t.videoId);
+    } else if (d.drop === 'results'){
+      const ids = [];
+      for (const f of files) ids.push(await upload(f));
+      const t = S.tests.get(d.tid);
+      await db.doc('tests/' + d.tid).update({ results: [...(t.results||[]), ...ids] });
+      touchVideo(t.videoId);
+    } else if (d.drop === 'log-res'){
+      for (const f of files){ const id = await upload(f); if (draft) draft.results.push(id); else assets.delete(id).catch(() => {}); }
+    } else if (d.drop === 'log-thumb'){
+      const id = await upload(files[0]);
+      if (draft) draft.thumbs[d.key] = id; else assets.delete(id).catch(() => {});
+    }
+  } catch (e) { fail(e, 'upload that image'); }
+  finally { S.busy.delete(key); render(); if (draft) renderModal(); }
+}
+
+async function saveField(el){
+  const val = el.type === 'number' ? (el.value === '' ? null : Math.round(parseFloat(el.value) * 10) / 10) : el.value.trim();
+  try {
+    if (el.dataset.vfield){
+      const v = S.videos.get(S.vid); if (!v || (v[el.dataset.vfield] ?? '') === val) return;
+      await db.doc('videos/' + v.id).update({ [el.dataset.vfield]: val, updatedAt: Date.now() });
+    } else if (el.dataset.tfield){
+      const t = S.tests.get(el.dataset.tid); if (!t) return;
+      const f = el.dataset.tfield;
+      if (f === 'share' || f === 'desc'){
+        const vars = VARIANT_KEYS.map(k => ({ key:k, ...((t.variants||[]).find(v => v.key === k) || {}) }));
+        const v = vars.find(x => x.key === el.dataset.key);
+        if ((v[f] ?? (f === 'share' ? null : '')) === val) return;
+        v[f] = val;
+        await db.doc('tests/' + t.id).update({ variants: vars });
+      } else {
+        if ((t[f] ?? '') === val) return;
+        await db.doc('tests/' + t.id).update({ [f]: val });
+      }
+      touchVideo(t.videoId);
+    }
+  } catch (e) { fail(e, 'save that change'); }
+}
+
+async function deleteTest(tid){
+  const t = S.tests.get(tid); if (!t) return;
+  const ids = [...(t.results||[]), ...(t.variants||[]).map(v => v.thumb)].filter(Boolean);
+  try {
+    await db.doc('tests/' + tid).delete();
+    if (assets) for (const id of ids) await assets.delete(id).catch(() => {});
+    toast(`Deleted Test ${t.number}`);
+  } catch (e) { fail(e, 'delete that test'); }
+}
+async function deleteVideo(vid){
+  const v = S.videos.get(vid); if (!v) return;
+  try {
+    for (const t of testsFor(vid)) await deleteTest(t.id);
+    await db.doc('videos/' + vid).delete();
+    if (assets && v.winnerThumb) await assets.delete(v.winnerThumb).catch(() => {});
+    S.view = 'library'; S.vid = null; render(); toast('Deleted video');
+  } catch (e) { fail(e, 'delete that video'); }
+}
+
+async function clearImage(b){
+  const d = b.dataset;
+  try {
+    if (d.clear === 'winner'){
+      const v = S.videos.get(d.vid); const old = v.winnerThumb;
+      await db.doc('videos/' + d.vid).update({ winnerThumb: null });
+      if (old) await assets.delete(old).catch(() => {});
+    } else if (d.clear === 'variant'){
+      const t = S.tests.get(d.tid);
+      const vars = VARIANT_KEYS.map(k => ({ key:k, ...((t.variants||[]).find(v => v.key === k) || {}) }));
+      const v = vars.find(x => x.key === d.key), old = v.thumb; v.thumb = null;
+      await db.doc('tests/' + d.tid).update({ variants: vars });
+      if (old) await assets.delete(old).catch(() => {});
+    } else if (d.clear === 'result'){
+      const t = S.tests.get(d.tid);
+      await db.doc('tests/' + d.tid).update({ results: (t.results||[]).filter(x => x !== d.id) });
+      await assets.delete(d.id).catch(() => {});
+    } else if (d.clear === 'log-result'){
+      draft.results = draft.results.filter(x => x !== d.id); assets.delete(d.id).catch(() => {}); renderModal();
+    } else if (d.clear === 'log-thumb'){
+      const old = draft.thumbs[d.key]; delete draft.thumbs[d.key]; if (old) assets.delete(old).catch(() => {}); renderModal();
+    }
+  } catch (e) { fail(e, 'remove that image'); }
+}
+
+/* ---------- log-a-test modal ---------- */
+let draft = null;
+const draftAssets = d => [...d.results, ...Object.values(d.thumbs)].filter(Boolean);
+function openLog(vid){
+  draft = { vid: vid || (S.videos.size ? '' : 'new'), title:'', url:'', results:[], thumbs:{}, gaps:{} }; S.picker = null;
+  renderModal();
+  setTimeout(() => (document.getElementById(draft && draft.vid === 'new' ? 'lg-title' : 'lg-video') || {}).focus?.(), 30);
+}
+function readDraft(){
+  if (!draft) return;
+  const g = id => document.getElementById(id);
+  if (g('lg-video')) draft.vid = g('lg-video').value;
+  if (g('lg-title')) draft.title = g('lg-title').value;
+  if (g('lg-url')) draft.url = g('lg-url').value;
+}
+function renderModal(){
+  if (!draft){ layer.innerHTML = ''; return; }
+  readDraft();
+  const vids = [...S.videos.values()].sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+  const nextN = draft.vid && draft.vid !== 'new' ? (Math.max(0, ...testsFor(draft.vid).map(t => t.number)) + 1) : 1;
+  const shots = draft.results.map(id => `<div class="shot"><img src="${src(id)}" alt="Results screenshot"><button class="x" type="button" title="Remove" data-clear="log-result" data-id="${id}">×</button></div>`).join('');
+  const resBusy = S.busy.has('log-res') ? ' busy' : '';
+  layer.innerHTML = `<div class="scrim" data-close="1"><form class="modal" id="lgForm">
+    <h2>Log a test</h2>
+    <label><span class="label">Video</span><select class="field" id="lg-video" required>
+      <option value="" ${!draft.vid?'selected':''} disabled>Choose a video…</option>
+      <option value="new" ${draft.vid==='new'?'selected':''}>+ New video</option>
+      ${vids.map(v => `<option value="${v.id}" ${draft.vid===v.id?'selected':''}>${esc(v.title || 'Untitled video')}</option>`).join('')}
+    </select></label>
+    ${draft.vid === 'new' ? `<div class="pair">
+      <label><span class="label">Title</span><input class="field" id="lg-title" required value="${esc(draft.title)}" placeholder="The video's title"></label>
+      <label><span class="label">YouTube link (optional)</span><input class="field" id="lg-url" value="${esc(draft.url)}" placeholder="https://youtube.com/…"></label></div>` : ''}
+    <div class="results"><span class="label">Results screenshot · this will be Test ${nextN}</span>
+      <div class="shots">${shots}<div class="shot drop big${resBusy}" tabindex="0" role="button" data-drop="log-res" style="position:relative"><div class="droptext">${draft.results.length ? 'Add another' : 'Drop or paste the results screenshot'}<small>click, drop, or ⌘V anywhere</small></div></div></div></div>
+    <div class="results"><span class="label">The gap each thumbnail tests</span>
+      <div class="variants mini">${VARIANT_KEYS.map(k => `<div class="var"><span class="key">${k}</span>${gapPicker('draft:' + k, draft.gaps[k] || [], true)}</div>`).join('')}</div></div>
+    <div class="row"><button class="btn" type="button" data-close="1">Cancel</button><button class="btn primary" type="submit" ${S.busy.size ? 'disabled' : ''}>Save Test ${nextN}</button></div>
+  </form></div>`;
+}
+async function submitLog(){
+  readDraft();
+  if (!draft.vid){ toast('Choose which video this test is for.'); return; }
+  if (draft.vid === 'new' && !draft.title.trim()){ toast('Give the new video a title.'); return; }
+  const d = draft;
+  try {
+    const now = Date.now();
+    let vid = d.vid;
+    if (vid === 'new'){
+      const ref = await db.collection('videos').add({ title: d.title.trim(), url: d.url.trim(), notes:'', winnerThumb:null, createdAt: now, updatedAt: now, createdBy: me });
+      vid = ref.id;
+    }
+    const number = Math.max(0, ...testsFor(vid).map(t => t.number)) + 1;
+    const tref = await db.collection('tests').add({ videoId: vid, number, startedAt: new Date().toISOString().slice(0,10), endedAt:'',
+      variants: VARIANT_KEYS.map(k => ({ key:k, thumb: d.thumbs[k] || null, share:null, gaps: d.gaps[k] || [] })), winner:null, results: d.results, notes:'', createdAt: now, createdBy: me });
+    if (d.vid !== 'new') touchVideo(vid);
+    draft = null; renderModal();
+    S.view = 'video'; S.vid = vid; render(); toast(`Saved Test ${number}. Fill in shares and mark the winner when you're ready.`);
+    setTimeout(() => document.getElementById('test-' + tref.id)?.scrollIntoView({ block:'start', behavior:'smooth' }), 300);
+  } catch (e) { fail(e, 'save that test'); }
+}
+
+/* ---------- lightbox ---------- */
+function closeLayer(discard){
+  if (discard && draft && assets) draftAssets(draft).forEach(id => assets.delete(id).catch(() => {}));
+  draft = null; layer.innerHTML = '';
+}
+function zoom(id){ layer.innerHTML = `<div class="scrim lb" data-close="1"><img src="${src(id)}" alt="Full-size image"></div>`; }
+
+/* ---------- events ---------- */
+let dropTarget = null, armed = null;
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('.lb')) { closeLayer(); return; }
+  const closer = t.closest('[data-close]');
+  if (closer && (t === closer || t.closest('button[data-close]'))) { closeLayer(true); return; }
+  const nav = t.closest('[data-nav]'); if (nav){ S.view = nav.dataset.nav; S.vid = null; render(); scrollTo(0,0); return; }
+  if (t.closest('#brand')){ S.view = 'library'; S.vid = null; render(); return; }
+  if (t.closest('#newVideo') || t.closest('[data-act="new-video"]')) { openLog(); return; }
+  const z = t.closest('[data-zoom]'); if (z && !t.closest('.card') && !layer.contains(z)) { zoom(z.dataset.zoom); return; }
+  const open = t.closest('[data-open]');
+  if (open){ S.view = 'video'; S.vid = open.dataset.open; render(); scrollTo(0,0);
+    if (open.dataset.test) setTimeout(() => document.getElementById('test-' + open.dataset.test)?.scrollIntoView({ block:'start' }), 50);
+    return; }
+  const g = t.closest('[data-gap]'); if (g){ S.gap = g.dataset.gap; render(); return; }
+  const gf = t.closest('[data-gfilter]');
+  if (gf){ const n = gf.dataset.gfilter.toLowerCase();
+    if (!n) S.gapSel.clear(); else if (S.gapSel.has(n)) S.gapSel.delete(n); else S.gapSel.add(n);
+    render(); return; }
+  const go = t.closest('[data-gopen]');
+  if (go){ S.picker = S.picker === go.dataset.gopen ? null : go.dataset.gopen; render(true); if (draft) renderModal();
+    setTimeout(() => document.getElementById('gpnew-' + S.picker)?.focus(), 0); return; }
+  const gt = t.closest('[data-gtoggle]'); if (gt){ toggleGap(gt.dataset.pkey, gt.dataset.gtoggle); return; }
+  const clr = t.closest('[data-clear]'); if (clr){ e.stopPropagation(); clearImage(clr); return; }
+  const drop = t.closest('[data-drop]'); if (drop){ dropTarget = drop; const fp = document.getElementById('filepick'); fp.multiple = drop.dataset.drop === 'results'; fp.value = ''; fp.click(); return; }
+  const act = t.closest('[data-act]');
+  if (act){
+    const a = act.dataset.act;
+    if (a === 'add-test') openLog(act.dataset.vid);
+    else if (a === 'winner'){
+      const tt = S.tests.get(act.dataset.tid);
+      db.doc('tests/' + tt.id).update({ winner: tt.winner === act.dataset.key ? null : act.dataset.key }).then(() => touchVideo(tt.videoId)).catch(err => fail(err, 'mark the winner'));
+    } else if (a === 'del-test' || a === 'del-video'){
+      if (armed !== act){ armed = act; const old = act.textContent; act.classList.add('armed'); act.textContent = 'Click again to delete';
+        setTimeout(() => { if (armed === act){ armed = null; act.classList.remove('armed'); act.textContent = old; } }, 3500); return; }
+      armed = null;
+      if (a === 'del-test') deleteTest(act.dataset.tid); else deleteVideo(act.dataset.vid);
+    }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.target.dataset && e.target.dataset.gnew && e.key === 'Enter'){
+    e.preventDefault();
+    const pkey = e.target.dataset.gnew, name = e.target.value.trim().replace(/\s+/g, ' ');
+    if (name){ e.target.blur(); S.picker = null; setGaps(pkey, [canonGap(name)]); }
+    return;
+  }
+  if (e.key === 'Escape' && S.picker){ S.picker = null; render(true); if (draft) renderModal(); return; }
+  if (e.key === 'Escape' && layer.innerHTML) closeLayer(true);
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-drop]')) { e.preventDefault(); e.target.click(); }
+});
+document.getElementById('filepick').addEventListener('change', e => { if (dropTarget) handleFiles(dropTarget, e.target.files); });
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'lg-video'){ renderModal(); return; }
+  if (el.dataset && (el.dataset.vfield || el.dataset.tfield) && canWrite) saveField(el);
+});
+document.addEventListener('input', e => { if (e.target.id === 'search'){ S.q = e.target.value; const pos = e.target.selectionStart; render(true); const s = document.getElementById('search'); s.focus(); s.setSelectionRange(pos,pos); } });
+document.addEventListener('focusout', () => setTimeout(() => { if (S.pendingRender) render(); }, 0));
+document.addEventListener('submit', e => { e.preventDefault(); if (e.target.id === 'lgForm') submitLog(); });
+['dragenter','dragover'].forEach(n => document.addEventListener(n, e => { const d = e.target.closest && e.target.closest('[data-drop]'); if (d){ e.preventDefault(); d.classList.add('over'); } }));
+document.addEventListener('dragleave', e => { const d = e.target.closest && e.target.closest('[data-drop]'); if (d) d.classList.remove('over'); });
+document.addEventListener('drop', e => { const d = e.target.closest && e.target.closest('[data-drop]'); if (d){ e.preventDefault(); d.classList.remove('over'); handleFiles(d, e.dataTransfer.files); } else e.preventDefault(); });
+// Paste a screenshot into whichever drop zone has focus (click it, then ⌘V)
+document.addEventListener('paste', e => {
+  const d = document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-drop]');
+  const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+  if (d && files.length){ e.preventDefault(); handleFiles(d, files); }
+  else if (draft && files.length){ e.preventDefault(); handleFiles({ dataset:{ drop:'log-res' } }, files); }
+});
+// clicking a drop zone opens the picker; also keep it focused so paste works afterward
+document.addEventListener('mousedown', e => { const d = e.target.closest && e.target.closest('[data-drop]'); if (d) d.focus(); });
+
+/* ---------- boot (Supabase) ---------- */
+const SB = window.supabase.createClient('https://gjksyrsfmszhewtwtdej.supabase.co', 'sb_publishable_bxifeMb2ZEzTrLbG6TEwwA_n6-15_hs');
+const T = 'thumb_docs';
+const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), b => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
+const check = r => { if (r.error) throw r.error; return r.data; };
+const listeners = {};
+async function refresh(coll){
+  const rows = check(await SB.from(T).select('id,data').eq('coll', coll).limit(5000));
+  const snap = { docs: rows.map(r => ({ id: r.id, exists: true, data: () => r.data })) };
+  (listeners[coll] || []).forEach(fn => fn(snap));
+}
+const docRef = (coll, id) => ({
+  id,
+  async update(patch){ check(await SB.rpc('thumb_patch', { p_coll: coll, p_id: id, p_patch: patch })); refresh(coll); },
+  async delete(){ check(await SB.from(T).delete().match({ coll, id })); refresh(coll); },
+});
+const sbDb = {
+  doc(path){ const [coll, id] = path.split('/'); return docRef(coll, id); },
+  collection(coll){ return {
+    limit(){ return this; },
+    async add(data){ const id = newId(); check(await SB.from(T).insert({ coll, id, data })); refresh(coll); return { id }; },
+    onSnapshot(next, err){
+      (listeners[coll] = listeners[coll] || []).push(next);
+      refresh(coll).catch(err);
+      setInterval(() => refresh(coll).catch(() => {}), 30000);
+    },
+  }; },
+};
+const sbAssets = {
+  async upload(file, opts){
+    const type = (opts && opts.type) || file.type || 'image/png';
+    const id = newId() + newId() + '.' + (type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+    check(await SB.storage.from('thumb-shots').upload(id, file, { contentType: type, cacheControl: '31536000' }));
+    return { id };
+  },
+  async delete(id){ check(await SB.storage.from('thumb-shots').remove([id])); },
+};
+render();
+(() => {
+  db = sbDb; assets = sbAssets;
+  SB.channel('thumb_docs_live').on('postgres_changes', { event: '*', schema: 'public', table: T }, p => {
+    const coll = (p.new && p.new.coll) || (p.old && p.old.coll);
+    if (coll) refresh(coll).catch(() => {}); else { refresh('videos'); refresh('tests'); }
+  }).subscribe();
+  const sub = (coll, key) => db.collection(coll).limit(1000).onSnapshot(snap => {
+    const m = new Map(); snap.docs.forEach(d => m.set(d.id, { id: d.id, ...d.data() }));
+    S[key] = m; S.ready[key === 'videos' ? 'v' : 't'] = true;
+    if (S.view === 'video' && S.vid && S.ready.v && !S.videos.has(S.vid)){ S.view = 'library'; S.vid = null; }
+    render();
+  }, err => { S.error = 'Could not load the saved tests. Reload the page.'; S.ready.v = S.ready.t = true; render(); console.error(err); });
+  sub('videos', 'videos'); sub('tests', 'tests');
+})();
+</script>
+</body></html>

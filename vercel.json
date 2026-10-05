@@ -1,6 +1,20 @@
 {
   "rewrites": [
-    { "source": "/sw.js", "destination": "/sw.js" },
-    { "source": "/(.*)", "destination": "/library.html" }
+    {
+      "source": "/sw.js",
+      "destination": "/sw.js"
+    },
+    {
+      "source": "/tests",
+      "destination": "/tests.html"
+    },
+    {
+      "source": "/tests.html",
+      "destination": "/tests.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/library.html"
+    }
   ]
 }
