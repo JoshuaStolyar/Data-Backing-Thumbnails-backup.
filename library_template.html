@@ -566,11 +566,16 @@ function relatedWords(kw){
     .sort((a,b) => b.lift - a.lift).slice(0, 14);
 }
 
+// "Search anything" rows carry only the video id to keep the payload small; outlier rows
+// (and older snapshots) still carry full URLs
+const videoUrl = v => v.url || `https://www.youtube.com/watch?v=${v.id}`;
+const videoThumb = v => v.thumb || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`;
+
 function videoRow(v){
   return `<div class="vid">
-      <img loading="lazy" src="${esc(v.thumb)}" alt="" data-full="${esc(v.thumb)}">
+      <img loading="lazy" src="${esc(videoThumb(v))}" alt="" data-full="${esc(videoThumb(v))}">
       <div class="b">
-        <a class="t" href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+        <a class="t" href="${esc(videoUrl(v))}" target="_blank" rel="noopener">${esc(v.title)}</a>
         <div class="m"><span class="x">${v.outlier}x</span><span class="r" title="Runner multiplier: views ÷ channel subscribers">${v.runner}x subs</span>${esc(v.channel)} · ${fmt(v.views)} views</div>
       </div>
     </div>`;
@@ -726,7 +731,7 @@ function exportBrowseCSV(){
     k.premises.forEach(p => {
       p.videos.forEach(v => {
         lines.push([k.grade, k.trend, k.slot_name, k.keyword, k.median_outlier, k.count, k.channels,
-                    v.title, v.channel, v.views, v.outlier, v.url, v.thumb].map(csvCell).join(','));
+                    v.title, v.channel, v.views, v.outlier, videoUrl(v), videoThumb(v)].map(csvCell).join(','));
       });
     });
   });

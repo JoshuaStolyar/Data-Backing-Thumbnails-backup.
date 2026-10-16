@@ -31,11 +31,11 @@ DEFAULT_CHANNELS = ",".join([
     "@irlcaylus", "@foltynofficial", "@terragreen1", "@mackhopkins", "@tylerblanchard",
     "@MrBeastGaming", "@markiplier", "@penguinz0", "@TylerOliveira", "@ZachKing",
     "@DoctorMike", "@LawByMike", "@MarkRober", "@DavidDobrik", "@jakepaul",
-    "@loganpaulvlogs", "@PrestonPlayz", "@LexiRivera", "@JordanMatter", "@ZHC",
+    "@loganpaulvlogs", "@PrestonPlayz", "@LexiHensler", "@JordanMatter", "@ZHC",
     "@maxthemeatguy", "@ZachChoi", "@Jesser",
     # Challenges & stunts
-    "@DannyDuncan69", "@MichelleKhare", "@RebeccaZamolo", "@NinjaKidzTV", "@JiDion",
-    "@BeastPhilanthropy", "@CarterSharer", "@StephenSharer", "@Dangmattsmith", "@CobyPersin",
+    "@danny", "@MichelleKhare", "@RebeccaZamolo", "@NinjaKidz", "@JiDion",
+    "@BeastPhilanthropy", "@CarterSharer", "@StephenSharer", "@Dangmattsmith", "@coby",
     "@2HYPE", "@KristopherLondon",
     # Science & builds
     "@williamosman", "@StuffMadeHere", "@CorridorCrew", "@smartereveryday", "@TheActionLab",
@@ -45,12 +45,12 @@ DEFAULT_CHANNELS = ",".join([
     "@AlexHormozi", "@StarterStory", "@CalebHammer", "@TheRamseyShow",
     # Skits & comedy
     "@smosh", "@anwar", "@BrandonRogers", "@DanielLaBelle", "@RyanGeorge",
-    "@JakeFellman", "@RDCworld1", "@HannahStocking", "@StudioC", "@Dropout",
+    "@JakeFellman", "@RDCworld1", "@HannahStocking", "@studioctv", "@Dropout",
     "@CalebCity", "@Druski",
     # Real people & reality
-    "@jubilee", "@Cut", "@SoftWhiteUnderbelly", "@SBSK", "@DrPhil",
+    "@jubilee", "@Cut", "@SoftWhiteUnderbelly", "@SpecialBooksbySpecialKids", "@DrPhil",
     "@InsideEdition", "@insider", "@Channel5YouTube", "@PawnStars", "@TheDodo",
-    "@djvlad", "@ShawnRyanShow", "@BarRescue", "@TLC", "@AETV",
+    "@VladTV", "@ShawnRyanShow", "@BarRescue", "@TLC", "@AETV",
     # Scams & scam-baiting
     "@KitbogaShow", "@PleasantGreen", "@ScammerPayback",
     # Documentary & explainers
@@ -60,38 +60,41 @@ DEFAULT_CHANNELS = ",".join([
     "@GameTheory", "@FilmTheory",
     # Horror, mystery & paranormal
     "@SamandColby", "@ExploringWithJosh", "@LazyMasquerade", "@NightMind", "@Wendigoon",
-    "@WatcherEntertainment", "@NukesTop5", "@ScaryInteresting", "@CreepsMcPasta",
+    "@watcher", "@NukesTop5", "@ScaryInteresting", "@CreepsMcPasta",
     # True crime & police
-    "@DrToddGrande", "@AudittheAudit", "@PoliceActivity", "@RealWorldPolice", "@courttv",
+    "@DrGrande", "@AudittheAudit", "@PoliceActivity", "@RealWorldPolice", "@courttv",
     # Commentary
-    "@dannygonzalez", "@DrewGooden", "@jarvis",
+    "@danny-gonzalez", "@DrewGooden", "@jarvis",
     # Animation
     "@SomethingElseYT", "@Swoozie", "@Emirichu", "@MeatCanyon", "@GLITCH",
     "@Pencilmation", "@TerminalMontage",
     # Travel & outdoors
     "@KaraandNate", "@drewbinsky", "@PeterSantenello", "@OutdoorBoys", "@BraveWilderness",
     # Cars
-    "@CleetusMcFarland", "@WhistlinDiesel", "@AlexChoi", "@VehicleVirgins", "@ChrisFix",
+    "@CleetusM", "@WhistlinDiesel", "@alexchoi1", "@VehicleVirgins", "@ChrisFix",
     "@HooviesGarage", "@Tavarish", "@DougDeMuro",
     # Sports
     "@JomboyMedia", "@TristanJass", "@ProfessorLive", "@brysondechambeau", "@GoodGood",
     "@BobDoesSports", "@overtime",
     # Fitness
-    "@JesseJamesWest", "@LarryWheels", "@BradleyMartyn", "@SamSulek", "@NickBare",
+    "@JesseJamesWest", "@LarryWheels", "@BradleyMartyn", "@sam_sulek", "@nickbarefitness",
     "@athleanx",
     # Food
     "@StrictlyDumpling", "@MattStonie", "@JoelHansen", "@ErikTheElectric", "@GugaFoods",
-    "@MythicalKitchen", "@babishculinaryuniverse", "@JoshuaWeissman", "@GoodMythicalMorning", "@FirstWeFeast",
+    "@MythicalKitchen", "@bingingwithbabish", "@JoshuaWeissman", "@GoodMythicalMorning", "@FirstWeFeast",
     # Gaming stories
     "@Aphmau", "@KreekCraft",
     # Lifestyle & media
-    "@SalishMatter", "@safiyany", "@WIRED", "@VanityFair", "@tryguys",
+    "@SalishMatter", "@safiya", "@WIRED", "@VanityFair", "@tryguys",
     # From the team's open tabs (Oct 15)
     "@CboysTV", "@ParrotX2", "@4funguys", "@FredBeyer", "@TheHamiltonCollection",
     "@MrEugeneDingle", "@whistlindiesel1000", "@TJToons", "@INTERGTA", "@MrRecapFromYouTube",
     "@gassy-yt", "@SapiensInsights", "@corey_eyring", "@Inkexplainer96", "@dimensionisme",
     "@IfverseTales", "@Egsplain", "@LuckyYouHQ", "@tgfbro", "@benmorris",
     "@FamilyFriendly", "@ImPeterMc", "@koopekool",
+    "@Beluga1", "@caylusblox", "@DarrenLevy", "@FrenchieFries", "@GoodEnoughAnimation",
+    "@jackksstone", "@krishnasahaylive", "@MatArmstrongbmx", "@MuffinJuice", "@realaddiebowley",
+    "@ThePerspectiveLab.x", "UCqqTVhwVfGYqrPEhBMJgjng", "UCWd_X7UsmUyyDjP9tWUNWig",
 ])
 CHANNELS = [c.strip() for c in os.environ.get("CHANNELS", DEFAULT_CHANNELS).split(",") if c.strip()]
 VIDEOS_PER_CHANNEL = 600
@@ -100,13 +103,13 @@ MIN_AGE_DAYS = 14
 OUTLIER_MIN = float(os.environ.get("OUTLIER_MIN", 2.0))
 MAX_AGE_DAYS_FOR_LOW_VIEWS = 4 * 365
 MIN_VIEWS_IF_OLD = 3_000_000
-MAX_VIDEOS = 3000
+MAX_VIDEOS = 15000
 DB_MIN_VIDEOS = 3
 DB_MIN_CHANNELS = 2
 EDGE_MIN = 2
 LIFT_MIN = 2.0
 PHRASE_MIN = 3
-MAX_KEYWORDS = 500
+MAX_KEYWORDS = 1000
 
 HERE = Path(__file__).resolve().parent
 CACHE = HERE / "cache"
@@ -387,6 +390,9 @@ def http_json(url, data=None, headers=None, retries=3):
             text = e.read().decode(errors="ignore")
             if e.code in (429, 500, 502, 503, 529) and attempt < retries - 1:
                 time.sleep(5 * (attempt + 1)); continue
+            # a 404 is one missing resource (e.g. a channel with no public uploads playlist),
+            # not a broken run - let the caller skip it instead of killing a 300-channel scrape
+            if e.code == 404: raise LookupError(text[:200])
             die(f"HTTP {e.code} from {url.split('?')[0]}\n{text[:600]}")
         except urllib.error.URLError as e:
             if attempt < retries - 1:
@@ -481,6 +487,12 @@ def channel_weighted_median(vids, field="outlier"):
     chan_avgs = [statistics.mean(vals) for vals in by_chan.values()]
     return round(statistics.median(chan_avgs), 2)
 
+# only the fields the page actually renders - the rest (publish date, length, channel
+# average, the keyword/premise it was filed under) roughly doubled the payload for nothing
+PAGE_VIDEO_FIELDS = ("title", "url", "thumb", "channel", "outlier", "runner", "views")
+def slim_video(v):
+    return {f: v[f] for f in PAGE_VIDEO_FIELDS}
+
 def build_library(outliers, channel_stats, all_long_form):
     aliases = load_aliases()
     history = load_history()
@@ -508,7 +520,7 @@ def build_library(outliers, channel_stats, all_long_form):
         # how many qualifying videos it contributed, so a prolific channel can't
         # dominate a keyword's stats.
         plist = sorted([{"premise": p, "count": len(pv), "median_outlier": channel_weighted_median(pv),
-                         "videos": sorted(pv, key=lambda x: -x["outlier"])} for p, pv in prem.items()],
+                         "videos": [slim_video(x) for x in sorted(pv, key=lambda x: -x["outlier"])]} for p, pv in prem.items()],
                        key=lambda p: (-p["count"], -p["median_outlier"]))
         med = channel_weighted_median(vids)
         med_runner = channel_weighted_median(vids, "runner")
@@ -551,7 +563,9 @@ def build_library(outliers, channel_stats, all_long_form):
                                 v["title"], v["channel"], v["views"], v["outlier"], v["runner"], v["url"], v["thumb"]])
     # "Search anything" searches every long-form video pulled, not just outliers, so a
     # miss is a real "not in the data" rather than an artifact of the outlier filter.
-    all_videos = [{"title": v["title"], "url": v["url"], "thumb": v["thumb"], "channel": v["channel"],
+    # 76k+ rows at this channel count, so ship the video id and let the page rebuild the
+    # watch/thumbnail URLs from it (see videoUrl/videoThumb in the template)
+    all_videos = [{"id": v["id"], "title": v["title"], "channel": v["channel"],
                    "outlier": v["outlier"], "runner": v["runner"], "views": v["views"]}
                   for v in sorted(all_long_form, key=lambda x: -x["outlier"])]
     payload = {"generated": datetime.now().strftime("%b %d, %Y at %I:%M %p"),
@@ -577,7 +591,10 @@ def main():
         ch = get_channel(entry)
         if not ch: continue
         BRAND_WORDS.update(re.findall(r"[a-z0-9']+", ch["name"].lower()))
-        vids = fetch_channel_videos(ch)
+        try:
+            vids = fetch_channel_videos(ch)
+        except LookupError:
+            print(f"  skipping {ch['name']} ({entry}): no public uploads playlist"); continue
         scored, all_scored = score_outliers(vids, ch["subs"])
         # an old video with weak absolute views is stale evidence even if it beat its channel's
         # average at the time - require a real view floor once a video is 4+ years old
@@ -589,7 +606,9 @@ def main():
         channel_stats.append({"name": ch["name"], "subs": ch["subs"], "url": ch["url"], "uploads_scanned": len(vids),
                                "long_form": len(scored), "outliers": len(o), "avg_views": avg_views})
         outs += o
-        all_long_form += all_scored  # every video with views (Shorts + recent too) - feeds "Search anything" only
+        # long-form only (same 4-minute floor as the outlier pipeline) - Shorts are a different
+        # format and the team doesn't reference them; feeds "Search anything" only
+        all_long_form += [v for v in all_scored if v["seconds"] >= MIN_LENGTH_SECONDS]
     if not outs: die("No outliers found. Add more channels or lower OUTLIER_MIN.")
     outs = sorted(outs, key=lambda v: -v["outlier"])[:MAX_VIDEOS]
     print("\n2. Extracting data backed keywords from titles")
