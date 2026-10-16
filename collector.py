@@ -33,6 +33,59 @@ DEFAULT_CHANNELS = ",".join([
     "@DoctorMike", "@LawByMike", "@MarkRober", "@DavidDobrik", "@jakepaul",
     "@loganpaulvlogs", "@PrestonPlayz", "@LexiRivera", "@JordanMatter", "@ZHC",
     "@maxthemeatguy", "@ZachChoi", "@Jesser",
+    # Challenges & stunts
+    "@DannyDuncan69", "@MichelleKhare", "@RebeccaZamolo", "@NinjaKidzTV", "@JiDion",
+    "@BeastPhilanthropy", "@CarterSharer", "@StephenSharer", "@Dangmattsmith", "@CobyPersin",
+    "@2HYPE", "@KristopherLondon",
+    # Science & builds
+    "@williamosman", "@StuffMadeHere", "@CorridorCrew", "@smartereveryday", "@TheActionLab",
+    "@UnnecessaryInventions", "@AllenPan", "@JerryRigEverything", "@WhatsInside", "@mkbhd",
+    # Medical, legal & money stories
+    "@chubbyemu", "@LegalEagle", "@Coffeezilla", "@GrahamStephan", "@AndreiJikh",
+    "@AlexHormozi", "@StarterStory", "@CalebHammer", "@TheRamseyShow",
+    # Skits & comedy
+    "@smosh", "@anwar", "@BrandonRogers", "@DanielLaBelle", "@RyanGeorge",
+    "@JakeFellman", "@RDCworld1", "@HannahStocking", "@StudioC", "@Dropout",
+    "@CalebCity", "@Druski",
+    # Real people & reality
+    "@jubilee", "@Cut", "@SoftWhiteUnderbelly", "@SBSK", "@DrPhil",
+    "@InsideEdition", "@insider", "@Channel5YouTube", "@PawnStars", "@TheDodo",
+    "@djvlad", "@ShawnRyanShow", "@BarRescue", "@TLC", "@AETV",
+    # Scams & scam-baiting
+    "@KitbogaShow", "@PleasantGreen", "@ScammerPayback",
+    # Documentary & explainers
+    "@johnnyharris", "@Vox", "@Wendoverproductions", "@VICE", "@CoffeehouseCrime",
+    "@TheInfographicsShow", "@zackdfilms", "@WeirdHistory", "@RealLifeLore", "@halfasinteresting",
+    "@joescott", "@MagnatesMedia", "@SecretBase", "@CompanyMan", "@BloombergOriginals",
+    "@GameTheory", "@FilmTheory",
+    # Horror, mystery & paranormal
+    "@SamandColby", "@ExploringWithJosh", "@LazyMasquerade", "@NightMind", "@Wendigoon",
+    "@WatcherEntertainment", "@NukesTop5", "@ScaryInteresting", "@CreepsMcPasta",
+    # True crime & police
+    "@DrToddGrande", "@AudittheAudit", "@PoliceActivity", "@RealWorldPolice", "@courttv",
+    # Commentary
+    "@dannygonzalez", "@DrewGooden", "@jarvis",
+    # Animation
+    "@SomethingElseYT", "@Swoozie", "@Emirichu", "@MeatCanyon", "@GLITCH",
+    "@Pencilmation", "@TerminalMontage",
+    # Travel & outdoors
+    "@KaraandNate", "@drewbinsky", "@PeterSantenello", "@OutdoorBoys", "@BraveWilderness",
+    # Cars
+    "@CleetusMcFarland", "@WhistlinDiesel", "@AlexChoi", "@VehicleVirgins", "@ChrisFix",
+    "@HooviesGarage", "@Tavarish", "@DougDeMuro",
+    # Sports
+    "@JomboyMedia", "@TristanJass", "@ProfessorLive", "@brysondechambeau", "@GoodGood",
+    "@BobDoesSports", "@overtime",
+    # Fitness
+    "@JesseJamesWest", "@LarryWheels", "@BradleyMartyn", "@SamSulek", "@NickBare",
+    "@athleanx",
+    # Food
+    "@StrictlyDumpling", "@MattStonie", "@JoelHansen", "@ErikTheElectric", "@GugaFoods",
+    "@MythicalKitchen", "@babishculinaryuniverse", "@JoshuaWeissman", "@GoodMythicalMorning", "@FirstWeFeast",
+    # Gaming stories
+    "@Aphmau", "@KreekCraft",
+    # Lifestyle & media
+    "@SalishMatter", "@safiyany", "@WIRED", "@VanityFair", "@tryguys",
 ])
 CHANNELS = [c.strip() for c in os.environ.get("CHANNELS", DEFAULT_CHANNELS).split(",") if c.strip()]
 VIDEOS_PER_CHANNEL = 600
