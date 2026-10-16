@@ -235,6 +235,16 @@ svg#galaxy:active{cursor:grabbing}
 
 <script>
 let DATA = /*__DATA__*/null;
+// "Search anything" rows ship positional ([id, title, channel index, outlier, runner, views])
+// to keep the snapshot small; expand them once so the rest of the page sees plain objects
+function hydrateVideos(p){
+  if (p && Array.isArray(p.all_videos) && Array.isArray(p.all_videos[0])) {
+    p.all_videos = p.all_videos.map(([id, title, ci, outlier, runner, views]) =>
+      ({ id, title, channel: p.video_channels[ci], outlier, runner, views }));
+  }
+  return p;
+}
+hydrateVideos(DATA);
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = n => n>=1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'')+'M' : n>=1e3 ? Math.round(n/1e3)+'K' : n;
@@ -313,12 +323,20 @@ function isValidPayload(p){
 // entirely, it just keeps running on the baked-in snapshot instead of breaking.
 async function fetchLiveLibraryData(){
   try {
-    const res = await fetchWithTimeout(`${SNAPSHOT_TABLE}?select=payload&order=id.desc&limit=5`, { headers: SB_HEADERS });
-    if (!res.ok) throw new Error(`Supabase ${res.status}`);
-    const rows = await res.json();
-    const good = rows.find(r => isValidPayload(r.payload));
+    // each snapshot is ~14MB, so pull just the newest and only reach back for the
+    // rollback set when that one fails the sanity check
+    const fetchRows = async n => {
+      const res = await fetchWithTimeout(`${SNAPSHOT_TABLE}?select=payload&order=id.desc&limit=${n}`, { headers: SB_HEADERS });
+      if (!res.ok) throw new Error(`Supabase ${res.status}`);
+      return res.json();
+    };
+    let good = (await fetchRows(1)).find(r => isValidPayload(r.payload));
+    if (!good) good = (await fetchRows(5)).find(r => isValidPayload(r.payload));
     if (!good) return;
-    DATA = good.payload;
+    // never trade fresher baked-in data for an older snapshot (e.g. a scrape whose Supabase
+    // push failed still ships its data in library.html)
+    if ((good.payload.generated_at || 0) < (DATA?.generated_at || 0)) return;
+    DATA = hydrateVideos(good.payload);
     render();
     renderBrowse();
   } catch (e) {

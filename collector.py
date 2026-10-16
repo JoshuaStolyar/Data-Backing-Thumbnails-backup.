@@ -565,16 +565,21 @@ def build_library(outliers, channel_stats, all_long_form):
     # miss is a real "not in the data" rather than an artifact of the outlier filter.
     # 76k+ rows at this channel count, so ship the video id and let the page rebuild the
     # watch/thumbnail URLs from it (see videoUrl/videoThumb in the template)
-    all_videos = [{"id": v["id"], "title": v["title"], "channel": v["channel"],
-                   "outlier": v["outlier"], "runner": v["runner"], "views": v["views"]}
+    # rows are positional [id, title, channel index, outlier, runner, views] with channel names
+    # listed once - labelled dicts put the snapshot past Supabase's insert statement timeout
+    video_channels = sorted({v["channel"] for v in all_long_form})
+    ch_index = {name: i for i, name in enumerate(video_channels)}
+    all_videos = [[v["id"], v["title"], ch_index[v["channel"]], v["outlier"], v["runner"], v["views"]]
                   for v in sorted(all_long_form, key=lambda x: -x["outlier"])]
     payload = {"generated": datetime.now().strftime("%b %d, %Y at %I:%M %p"),
+               # lets the page tell whether a Supabase snapshot is older than its baked-in data
+               "generated_at": int(time.time()),
                "channels": sorted({v["channel"] for v in outliers}),
                "channel_stats": sorted(channel_stats, key=lambda c: -c["subs"]),
                "outlier_min": OUTLIER_MIN,
                "total": len(outliers), "rule": f"{DB_MIN_VIDEOS}+ outlier videos across {DB_MIN_CHANNELS}+ channels",
                "slots": SLOTS,
-               "keywords": keywords, "edges": edges, "all_videos": all_videos}
+               "keywords": keywords, "edges": edges, "all_videos": all_videos, "video_channels": video_channels}
     html = (HERE / "library_template.html").read_text().replace("/*__DATA__*/null", json.dumps(payload).replace("</", "<\\/"))
     (HERE / "library.html").write_text(html)
     push_snapshot_to_supabase(payload)
