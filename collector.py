@@ -86,6 +86,11 @@ DEFAULT_CHANNELS = ",".join([
     "@Aphmau", "@KreekCraft",
     # Lifestyle & media
     "@SalishMatter", "@safiyany", "@WIRED", "@VanityFair", "@tryguys",
+    # From the team's open tabs (Oct 15)
+    "@CboysTV", "@ParrotX2", "@4funguys", "@FredBeyer", "@TheHamiltonCollection",
+    "@MrEugeneDingle", "@whistlindiesel1000", "@TJToons", "@INTERGTA", "@MrRecapFromYouTube",
+    "@gassy-yt", "@SapiensInsights", "@corey_eyring", "@Inkexplainer96", "@dimensionisme",
+    "@IfverseTales", "@Egsplain", "@LuckyYouHQ", "@tgfbro", "@benmorris",
 ])
 CHANNELS = [c.strip() for c in os.environ.get("CHANNELS", DEFAULT_CHANNELS).split(",") if c.strip()]
 VIDEOS_PER_CHANNEL = 600
