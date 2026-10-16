@@ -186,7 +186,7 @@ svg#galaxy:active{cursor:grabbing}
     <div class="stats" id="pStats"></div>
     <h3 id="pRelatedHead">Words that go well with it</h3>
     <div class="chips" id="pRelated"></div>
-    <h3 id="pPremisesHead">Premises &amp; example videos</h3>
+    <h3 id="pPremisesHead">Example videos</h3>
     <div id="pPremises"></div>
   </div>
 
@@ -601,7 +601,7 @@ function videoRow(v){
 
 function openPanel(k){
   $('#pRelatedHead').hidden = false;
-  $('#pPremisesHead').textContent = 'Premises & example videos';
+  $('#pPremisesHead').textContent = 'Example videos';
   $('#pKeyword').innerHTML = `${gradeBadge(k.grade)}${trendBadge(k.trend)} ${esc(k.keyword)}` +
     (k.data_backed ? '<span class="badge">Data backed</span>' : '');
   $('#pStats').textContent = `${k.count} outlier video${k.count===1?'':'s'} across ${k.channels} channel${k.channels===1?'':'s'}, median ${k.median_outlier}x normal views, median ${k.median_runner}x subscriber runner`;
@@ -612,15 +612,6 @@ function openPanel(k){
 
   const active = unusedPremises(k);
   const archivedCount = k.premises.length - active.length;
-  const bestPick = active.flatMap(p => p.videos.map(v => ({ v, premise: p.premise })))
-    .sort((a,b) => b.v.outlier - a.v.outlier)[0];
-  const bestProof = bestPick ? `<div class="best-proof">
-      <div class="best-proof-head">
-        <div class="best-proof-label">Best proof</div>
-        <button class="use-btn" data-kw="${esc(k.keyword)}" data-premise="${esc(bestPick.premise)}">Mark used</button>
-      </div>
-      ${videoRow(bestPick.v)}
-    </div>` : '';
   const groups = active.slice(0, 8).map(p => `
     <div class="pgroup" data-kw="${esc(k.keyword)}" data-premise="${esc(p.premise)}">
       <div class="pgroup-head">
@@ -629,7 +620,7 @@ function openPanel(k){
       </div>
       ${p.videos.slice(0, 3).map(videoRow).join('')}
     </div>`).join('');
-  $('#pPremises').innerHTML = bestProof + groups + (archivedCount
+  $('#pPremises').innerHTML = groups + (archivedCount
     ? `<div class="archived-note">${archivedCount} premise${archivedCount===1?'':'s'} for this word already marked used — see Archive.</div>` : '');
 }
 
