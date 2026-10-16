@@ -91,6 +91,7 @@ DEFAULT_CHANNELS = ",".join([
     "@MrEugeneDingle", "@whistlindiesel1000", "@TJToons", "@INTERGTA", "@MrRecapFromYouTube",
     "@gassy-yt", "@SapiensInsights", "@corey_eyring", "@Inkexplainer96", "@dimensionisme",
     "@IfverseTales", "@Egsplain", "@LuckyYouHQ", "@tgfbro", "@benmorris",
+    "@FamilyFriendly", "@ImPeterMc", "@koopekool",
 ])
 CHANNELS = [c.strip() for c in os.environ.get("CHANNELS", DEFAULT_CHANNELS).split(",") if c.strip()]
 VIDEOS_PER_CHANNEL = 600
